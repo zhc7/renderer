@@ -29,14 +29,14 @@ impl Mul<Matrix> for Matrix {
     }
 }
 
-pub struct World<'a> {
-    pub objects: Vec<Object<'a>>,
+pub struct World {
+    pub objects: Vec<Object>,
     pub lights: Vec<Light>,
     pub camera: Camera,
 }
 
-impl<'a> World<'a> {
-    pub fn new() -> World<'a> {
+impl World {
+    pub fn new() -> World {
         World {
             objects: Vec::new(),
             lights: Vec::new(),
@@ -44,7 +44,7 @@ impl<'a> World<'a> {
         }
     }
 
-    fn add_object(&mut self, object: Object<'a>) {
+    fn add_object(&mut self, object: Object) {
         self.objects.push(object);
     }
 
@@ -83,8 +83,8 @@ impl<'a> World<'a> {
             let mut weights = 0.0;
             for i in 0..3 {
                 let ver = &triangle[i];
-                let distance = point.distance(ver);
-                normal = normal + point.normal.unwrap() * distance;
+                let distance = point.distance(&ver);
+                normal = normal + point.normal().unwrap() * distance;
                 weights += distance;
             }
             normal = normal / weights;
@@ -101,9 +101,9 @@ impl<'a> World<'a> {
         // transform to camera view
         let mat_shift = Matrix {
             m: [
-                [1.0, 0.0, 0.0, -self.camera.position.x],
-                [0.0, 1.0, 0.0, -self.camera.position.y],
-                [0.0, 0.0, 1.0, -self.camera.position.z],
+                [1.0, 0.0, 0.0, -self.camera.position.x()],
+                [0.0, 1.0, 0.0, -self.camera.position.y()],
+                [0.0, 0.0, 1.0, -self.camera.position.z()],
                 [0.0, 0.0, 0.0, 1.0],
             ],
         };

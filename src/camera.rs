@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use crate::geometric::{Point, Ray, Vector};
+use crate::geometric::{Ray, Point, Vector};
 use crate::light::Color;
 
 pub struct Camera {

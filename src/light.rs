@@ -1,8 +1,8 @@
-use std::ops::Mul;
 use std::ops::Add;
+use std::ops::Mul;
+
 use crate::geometric::{Point, Vector};
 use crate::object::Properties;
-
 
 #[derive(Clone, Copy)]
 pub struct Color {
@@ -54,12 +54,7 @@ impl Light {
     pub fn new() -> Light {
         Light {
             color: Color::default(),
-            position: Point {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-                normal: None,
-            },
+            position: Point::new(0.0, 0.0, 0.0),
         }
     }
 

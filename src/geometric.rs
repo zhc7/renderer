@@ -1,5 +1,8 @@
+use std::cell::RefCell;
 use std::hash::Hash;
 use std::ops::{Add, Div, Index, Mul, Neg, Sub};
+use std::rc::Rc;
+
 use crate::world::Matrix;
 
 #[derive(Debug, Clone, Copy)]
@@ -20,12 +23,83 @@ impl Vector {
 }
 
 #[derive(Debug, Clone)]
-pub struct Point {
+struct _Point {
     pub x: f64,
     pub y: f64,
     pub z: f64,
     pub normal: Option<Vector>,
 }
+
+#[derive(Debug)]
+pub struct Point {
+    inner : Rc<RefCell<_Point>>,
+}
+
+impl Point {
+    pub fn new(x: f64, y: f64, z: f64) -> Point {
+        Point {
+            inner: Rc::new(RefCell::new(_Point {
+                x,
+                y,
+                z,
+                normal: None,
+            })),
+        }
+    }
+    
+    pub fn x(&self) -> f64 {
+        self.inner.borrow().x
+    }
+    
+    pub fn y(&self) -> f64 {
+        self.inner.borrow().y
+    }
+    
+    pub fn z(&self) -> f64 {
+        self.inner.borrow().z
+    }
+    
+    pub fn normal(&self) -> Option<Vector> {
+        self.inner.borrow().normal
+    }
+    
+    pub fn set_normal(&self, normal: Vector) {
+        self.inner.borrow_mut().normal = Some(normal);
+    }
+    
+    pub fn transform(&self, matrix: &Matrix) {
+        self.inner.borrow_mut().transform(matrix);
+    }
+    
+    pub fn distance(&self, other: &Point) -> f64 {
+        let dx = self.x() - other.x();
+        let dy = self.y() - other.y();
+        let dz = self.z() - other.z();
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+}
+
+impl Clone for Point {
+    fn clone(&self) -> Point {
+        Point {
+            inner: Rc::clone(&self.inner),
+        }
+    }
+}
+
+impl Hash for Point {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.inner.borrow().hash(state)
+    }
+}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.borrow().eq(&*other.inner.borrow())
+    }
+}
+
+impl Eq for Point {}
 
 #[derive(Debug, Clone, Hash)]
 pub struct Segment {
@@ -38,11 +112,11 @@ pub struct Ray {
     pub direction: Vector,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
-pub struct Triangle<'a> {
-    pub a: &'a Point,
-    pub b: &'a Point,
-    pub c: &'a Point,
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub struct Triangle {
+    pub a: Point,
+    pub b: Point,
+    pub c: Point,
     pub normal: Option<Vector>,
 }
 
@@ -99,12 +173,22 @@ impl Hash for Vector {
     }
 }
 
-impl From<&Point> for Vector {
-    fn from(point: &Point) -> Vector {
+impl From<&_Point> for Vector {
+    fn from(point: &_Point) -> Vector {
         Vector {
             x: point.x,
             y: point.y,
             z: point.z,
+        }
+    }
+}
+
+impl From<&Point> for Vector {
+    fn from(point: &Point) -> Vector {
+        Vector {
+            x: point.x(),
+            y: point.y(),
+            z: point.z(),
         }
     }
 }
@@ -169,9 +253,9 @@ impl Div<f64> for Vector {
     }
 }
 
-impl Point {
-    pub fn new(x: f64, y: f64, z: f64) -> Point {
-        Point {
+impl _Point {
+    pub fn new(x: f64, y: f64, z: f64) -> _Point {
+        _Point {
             x,
             y,
             z,
@@ -188,7 +272,7 @@ impl Point {
         self.z = z;
     }
     
-    pub fn distance(&self, other: &Point) -> f64 {
+    pub fn distance(&self, other: &_Point) -> f64 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
@@ -196,15 +280,15 @@ impl Point {
     }
 }
 
-impl PartialEq<Self> for Point {
+impl PartialEq<Self> for _Point {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z
     }
 }
 
-impl Eq for Point {}
+impl Eq for _Point {}
 
-impl Hash for Point {
+impl Hash for _Point {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.x.to_bits().hash(state);
         self.y.to_bits().hash(state);
@@ -212,9 +296,9 @@ impl Hash for Point {
     }
 }
 
-impl From<Vector> for Point {
-    fn from(vector: Vector) -> Point {
-        Point {
+impl From<Vector> for _Point {
+    fn from(vector: Vector) -> _Point {
+        _Point {
             x: vector.x,
             y: vector.y,
             z: vector.z,
@@ -223,41 +307,47 @@ impl From<Vector> for Point {
     }
 }
 
-impl<'a> Triangle<'a> {
-    pub fn new(a: &'a Point, b: &'a Point, c: &'a Point) -> Triangle<'a> {
+impl From<Vector> for Point {
+    fn from(vector: Vector) -> Point {
+        Point::new(vector.x, vector.y, vector.z)
+    }
+}
+
+impl Triangle {
+    pub fn new(a: &Point, b: &Point, c: &Point) -> Triangle {
         Triangle {
-            a,
-            b,
-            c,
+            a: a.clone(),
+            b: b.clone(),
+            c: c.clone(),
             normal: None,
         }
     }
 
     pub fn calc_norm(&mut self) {
-        let ab = Vector::from(self.b) - Vector::from(self.a);
-        let ac = Vector::from(self.c) - Vector::from(self.a);
+        let ab = Vector::from(&self.b) - Vector::from(&self.a);
+        let ac = Vector::from(&self.c) - Vector::from(&self.a);
         let normal = ab.cross(ac).normalize();
         self.normal = Some(normal);
     }
 
     pub fn size(&self) -> f64 {
-        let ab = Vector::from(self.b) - Vector::from(self.a);
-        let ac = Vector::from(self.c) - Vector::from(self.a);
+        let ab = Vector::from(&self.b) - Vector::from(&self.a);
+        let ac = Vector::from(&self.c) - Vector::from(&self.a);
         let cross = ab.cross(ac);
         cross.magnitude() / 2.0
     }
 
     pub fn intersect(&self, ray: &Ray) -> Option<(f64, Point)> {
-        let ab = Vector::from(self.b) - Vector::from(self.a);
-        let ac = Vector::from(self.c) - Vector::from(self.a);
+        let ab = Vector::from(&self.b) - Vector::from(&self.a);
+        let ac = Vector::from(&self.c) - Vector::from(&self.a);
         let normal = ab.cross(ac).normalize();
-        let d = -normal.dot(Vector::from(self.a));
+        let d = -normal.dot(Vector::from(&self.a));
         let t = -(normal.dot(Vector::from(&ray.start)) + d) / normal.dot(ray.direction);
         if t < 0.0 {
             return None;
         }
         let point = Vector::from(&ray.start) + ray.direction * t;
-        let ap = point - Vector::from(self.a);
+        let ap = point - Vector::from(&self.a);
         let dot00 = ac.dot(ac);
         let dot01 = ac.dot(ab);
         let dot02 = ac.dot(ap);
@@ -274,7 +364,7 @@ impl<'a> Triangle<'a> {
     }
 }
 
-impl<'a> Index<usize> for Triangle<'a> {
+impl Index<usize> for Triangle {
     type Output = Point;
 
     fn index(&self, index: usize) -> &Point {

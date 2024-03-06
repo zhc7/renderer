@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+
 use crate::geometric::{Point, Triangle};
 use crate::light::Color;
 
@@ -10,8 +11,8 @@ pub struct Properties {
     pub shininess: f64,
 }
 
-pub struct Object<'a> {
-    pub triangles: Vec<Triangle<'a>>,
+pub struct Object {
+    pub triangles: Vec<Triangle>,
     pub points: Vec<Point>,
     pub properties: Properties,
 }
@@ -28,8 +29,8 @@ impl Default for Properties {
     }
 }
 
-impl<'a> Object<'a> {
-    pub fn new() -> Object<'a> {
+impl Object {
+    pub fn new() -> Object {
         Object {
             triangles: Vec::new(),
             points: Vec::new(),
@@ -66,6 +67,7 @@ impl<'a> Object<'a> {
         for (point, normal) in normals.iter_mut() {
             let weight = weights[point];
             *normal = *normal / weight;
+            point.set_normal(normal.normalize());
         }
     }
 }
