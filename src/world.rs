@@ -36,18 +36,18 @@ pub struct World<'a> {
 }
 
 impl<'a> World<'a> {
-    fn new() -> World<'a> {
+    pub fn new() -> World<'a> {
         World {
             objects: Vec::new(),
             lights: Vec::new(),
             camera: Camera::new(),
         }
     }
-    
+
     fn add_object(&mut self, object: Object<'a>) {
         self.objects.push(object);
     }
-    
+
     fn transform(&mut self, matrix: Matrix) {
         for object in &mut self.objects {
             for point in &mut object.points {
@@ -62,7 +62,7 @@ impl<'a> World<'a> {
         self.camera.up.transform(&matrix);
         self.camera.right.transform(&matrix);
     }
-    
+
     fn trace(&self, ray: &Ray) -> Color {
         let mut nearest = None;
         let mut nearest_distance = f64::INFINITY;
@@ -96,8 +96,8 @@ impl<'a> World<'a> {
             Color::default()
         }
     }
-    
-    fn render(&mut self) {
+
+    pub fn render(&mut self) {
         // transform to camera view
         let mat_shift = Matrix {
             m: [
@@ -117,7 +117,7 @@ impl<'a> World<'a> {
         };
         let mat_camera = mat_rotate * mat_shift;
         self.transform(mat_camera);
-        
+
         // render
         for y in 0..self.camera.picture.height {
             for x in 0..self.camera.picture.width {
