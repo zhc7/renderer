@@ -1,7 +1,7 @@
 use std::ops::Mul;
 
 use crate::camera::Camera;
-use crate::geometric::{Ray, Vector};
+use crate::geometric::{Point, Ray, Triangle, Vector};
 use crate::light::{Color, Light};
 use crate::object::Object;
 
@@ -35,6 +35,30 @@ pub struct World {
     pub camera: Camera,
 }
 
+pub enum NormMixMode {
+    Flat,
+    DistanceAverage,
+}
+
+fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
+    match mode {
+        NormMixMode::Flat => triangle.normal.unwrap(),
+        NormMixMode::DistanceAverage => {
+            // average normal of three vertices
+            let mut normal = Vector::zero();
+            let mut weights = 0.0;
+            for i in 0..3 {
+                let ver = &triangle[i];
+                let w = 1. / (1. + point.distance(&ver));
+                normal = normal + ver.normal().unwrap() * w;
+                weights += w;
+            }
+            normal = normal / weights;
+            normal
+        }
+    }
+}
+
 impl World {
     pub fn new() -> World {
         World {
@@ -44,8 +68,30 @@ impl World {
         }
     }
 
-    fn add_object(&mut self, object: Object) {
+    pub fn add_object(&mut self, object: Object, center: Point) {
+        for point in &object.points {
+            point.transform(&Matrix {
+                m: [
+                    [1.0, 0.0, 0.0, center.x()],
+                    [0.0, 1.0, 0.0, center.y()],
+                    [0.0, 0.0, 1.0, center.z()],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            });
+        }
         self.objects.push(object);
+    }
+    
+    pub fn add_light(&mut self, light: Light, center: Point) {
+        light.position.transform(&Matrix {
+            m: [
+                [1.0, 0.0, 0.0, center.x()],
+                [0.0, 1.0, 0.0, center.y()],
+                [0.0, 0.0, 1.0, center.z()],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+        });
+        self.lights.push(light);
     }
 
     fn transform(&mut self, matrix: Matrix) {
@@ -58,9 +104,6 @@ impl World {
             light.position.transform(&matrix);
         }
         self.camera.position.transform(&matrix);
-        self.camera.direction.transform(&matrix);
-        self.camera.up.transform(&matrix);
-        self.camera.right.transform(&matrix);
     }
 
     fn trace(&self, ray: &Ray) -> Color {
@@ -77,18 +120,9 @@ impl World {
             }
         }
         if let Some((point, object, triangle)) = nearest {
-            let mut color = Color::default();
-            // average normal of three vertices
-            let mut normal = Vector::new();
-            let mut weights = 0.0;
-            for i in 0..3 {
-                let ver = &triangle[i];
-                let distance = point.distance(&ver);
-                normal = normal + point.normal().unwrap() * distance;
-                weights += distance;
-            }
-            normal = normal / weights;
+            let mut color = Color::black();
             for light in &self.lights {
+                let normal = get_normal(&point, &triangle, NormMixMode::Flat);
                 color = color + light.phong(&point, normal, ray.direction, &object.properties);
             }
             color
@@ -98,6 +132,12 @@ impl World {
     }
 
     pub fn render(&mut self) {
+        // calculate normals
+        for object in &mut self.objects {
+            object.calc_triangle_norms();
+            object.calc_point_norms();
+        }
+        
         // transform to camera view
         let mat_shift = Matrix {
             m: [
@@ -117,6 +157,12 @@ impl World {
         };
         let mat_camera = mat_rotate * mat_shift;
         self.transform(mat_camera);
+        self.camera.direction = Vector::new(0.0, 0.0, 1.0);
+        self.camera.up = Vector::new(0.0, 1.0, 0.0);
+        self.camera.right = Vector::new(1.0, 0.0, 0.0);
+        for object in &mut self.objects {
+            object.calc_triangle_norms();
+        }
 
         // render
         for y in 0..self.camera.picture.height {

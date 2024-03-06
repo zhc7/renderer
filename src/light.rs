@@ -16,12 +16,30 @@ pub struct Light {
     pub position: Point,
 }
 
+impl Color {
+    pub fn new(r: u8, g: u8, b: u8) -> Color {
+        Color {
+            r,
+            g,
+            b,
+        }
+    }
+    
+    pub fn black() -> Color {
+        Color {
+            r: 0,
+            g: 0,
+            b: 0,
+        }
+    }
+}
+
 impl Default for Color {
     fn default() -> Color {
         Color {
-            r: 128,
-            g: 128,
-            b: 128,
+            r: 64,
+            g: 64,
+            b: 64,
         }
     }
 }

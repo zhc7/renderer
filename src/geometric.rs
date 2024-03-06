@@ -13,7 +13,15 @@ pub struct Vector {
 }
 
 impl Vector {
-    pub fn new() -> Vector {
+    pub fn new(x: f64, y: f64, z: f64) -> Vector {
+        Vector {
+            x,
+            y,
+            z,
+        }
+    }
+    
+    pub fn zero() -> Vector {
         Vector {
             x: 0.0,
             y: 0.0,
@@ -46,31 +54,31 @@ impl Point {
             })),
         }
     }
-    
+
     pub fn x(&self) -> f64 {
         self.inner.borrow().x
     }
-    
+
     pub fn y(&self) -> f64 {
         self.inner.borrow().y
     }
-    
+
     pub fn z(&self) -> f64 {
         self.inner.borrow().z
     }
-    
+
     pub fn normal(&self) -> Option<Vector> {
         self.inner.borrow().normal
     }
-    
+
     pub fn set_normal(&self, normal: Vector) {
         self.inner.borrow_mut().normal = Some(normal);
     }
-    
+
     pub fn transform(&self, matrix: &Matrix) {
         self.inner.borrow_mut().transform(matrix);
     }
-    
+
     pub fn distance(&self, other: &Point) -> f64 {
         let dx = self.x() - other.x();
         let dy = self.y() - other.y();
@@ -145,7 +153,7 @@ impl Vector {
             z: self.x * rhs.y - self.y * rhs.x,
         }
     }
-    
+
     pub fn transform(&mut self, matrix: &Matrix) {
         let x = self.x * matrix.m[0][0] + self.y * matrix.m[1][0] + self.z * matrix.m[2][0];
         let y = self.x * matrix.m[0][1] + self.y * matrix.m[1][1] + self.z * matrix.m[2][1];
@@ -262,7 +270,7 @@ impl _Point {
             normal: None,
         }
     }
-    
+
     pub fn transform(&mut self, matrix: &Matrix) {
         let x = self.x * matrix.m[0][0] + self.y * matrix.m[0][1] + self.z * matrix.m[0][2] + matrix.m[0][3];
         let y = self.x * matrix.m[1][0] + self.y * matrix.m[1][1] + self.z * matrix.m[1][2] + matrix.m[1][3];
@@ -271,7 +279,7 @@ impl _Point {
         self.y = y;
         self.z = z;
     }
-    
+
     pub fn distance(&self, other: &_Point) -> f64 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;

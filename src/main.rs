@@ -1,8 +1,10 @@
 extern crate bmp;
-use bmp::{Image, Pixel};
-use crate::camera::Picture;
-use crate::world::World;
 
+use bmp::{Image, Pixel};
+
+use crate::camera::Picture;
+use crate::geometric::Point;
+use crate::world::World;
 
 mod geometric;
 mod light;
@@ -29,7 +31,20 @@ fn save(picture: &Picture) {
 
 
 fn main() {
+    // left hind system!!!
     let mut world = World::new();
+    let mut object = shapes::cube();
+    object.properties.ambient = 0.1;
+    object.properties.diffuse = 0.7;
+    object.properties.specular = 1.0;
+    object.properties.shininess = 1.0;
+    world.add_object(object, Point::new(0.0, 0.0, 10.0));
+    world.add_light(light::Light {
+        color: light::Color { r: 255, g: 255, b: 255 },
+        position: Point::new(10.0, 10.0, 3.0),
+    }, Point::new(0.0, 0.0, 0.0));
+    world.camera.position = Point::new(3.0, 3.0, 0.0);
+    world.camera.point_at(&Point::new(0.0, 0.0, 10.0));
     world.render();
     save(&world.camera.picture);
 }

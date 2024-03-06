@@ -12,10 +12,23 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub fn point_at(&mut self, target: &Point) {
+        let direction = Vector {
+            x: target.x() - self.position.x(),
+            y: target.y() - self.position.y(),
+            z: target.z() - self.position.z(),
+        };
+        self.direction = direction.normalize();
+        self.right = self.up.cross(self.direction).normalize();
+        self.up = self.direction.cross(self.right).normalize();
+    }
+}
+
+impl Camera {
     pub fn get_ray(&self, p0: u32, p1: u32) -> Ray {
         let x = (p0 as f64 + 0.5) / self.picture.width as f64;
         let y = (p1 as f64 + 0.5) / self.picture.height as f64;
-        let direction = self.direction + self.right * (x - 0.5) + self.up * (y - 0.5);
+        let direction = self.direction + self.right * (x - 0.5) + self.up * (0.5 - y);
         Ray {
             start: self.position.clone(),
             direction: direction.normalize(),
