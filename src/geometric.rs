@@ -1,11 +1,22 @@
 use std::hash::Hash;
 use std::ops::{Add, Div, Index, Mul, Neg, Sub};
+use crate::world::Matrix;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
     pub z: f64,
+}
+
+impl Vector {
+    pub fn new() -> Vector {
+        Vector {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -59,6 +70,15 @@ impl Vector {
             y: self.z * rhs.x - self.x * rhs.z,
             z: self.x * rhs.y - self.y * rhs.x,
         }
+    }
+    
+    pub fn transform(&mut self, matrix: &Matrix) {
+        let x = self.x * matrix.m[0][0] + self.y * matrix.m[1][0] + self.z * matrix.m[2][0];
+        let y = self.x * matrix.m[0][1] + self.y * matrix.m[1][1] + self.z * matrix.m[2][1];
+        let z = self.x * matrix.m[0][2] + self.y * matrix.m[1][2] + self.z * matrix.m[2][2];
+        self.x = x;
+        self.y = y;
+        self.z = z;
     }
 }
 
@@ -158,6 +178,22 @@ impl Point {
             normal: None,
         }
     }
+    
+    pub fn transform(&mut self, matrix: &Matrix) {
+        let x = self.x * matrix.m[0][0] + self.y * matrix.m[0][1] + self.z * matrix.m[0][2] + matrix.m[0][3];
+        let y = self.x * matrix.m[1][0] + self.y * matrix.m[1][1] + self.z * matrix.m[1][2] + matrix.m[1][3];
+        let z = self.x * matrix.m[2][0] + self.y * matrix.m[2][1] + self.z * matrix.m[2][2] + matrix.m[2][3];
+        self.x = x;
+        self.y = y;
+        self.z = z;
+    }
+    
+    pub fn distance(&self, other: &Point) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
 }
 
 impl PartialEq<Self> for Point {
@@ -211,7 +247,7 @@ impl<'a> Triangle<'a> {
         cross.magnitude() / 2.0
     }
 
-    pub fn intersect(&self, ray: &Ray) -> Option<Point> {
+    pub fn intersect(&self, ray: &Ray) -> Option<(f64, Point)> {
         let ab = Vector::from(self.b) - Vector::from(self.a);
         let ac = Vector::from(self.c) - Vector::from(self.a);
         let normal = ab.cross(ac).normalize();
@@ -231,7 +267,7 @@ impl<'a> Triangle<'a> {
         let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
         let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
         if u >= 0.0 && v >= 0.0 && u + v <= 1.0 {
-            Some(Point::from(point))
+            Some((t, Point::from(point)))
         } else {
             None
         }

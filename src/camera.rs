@@ -1,17 +1,42 @@
 use std::ops::{Index, IndexMut};
 
-use crate::geometric::{Point, Vector};
+use crate::geometric::{Point, Ray, Vector};
 use crate::light::Color;
 
 pub struct Camera {
-    position: Point,
-    direction: Vector,
+    pub picture: Picture,
+    pub position: Point,
+    pub direction: Vector,
+    pub up: Vector,
+    pub right: Vector,
 }
 
-struct Picture {
-    width: u32,
-    height: u32,
-    pixels: Vec<Color>,
+impl Camera {
+    pub fn get_ray(&self, p0: u32, p1: u32) -> Ray {
+        let x = (p0 as f64 + 0.5) / self.picture.width as f64;
+        let y = (p1 as f64 + 0.5) / self.picture.height as f64;
+        let direction = self.direction + self.right * (x - 0.5) + self.up * (y - 0.5);
+        Ray {
+            start: self.position.clone(),
+            direction: direction.normalize(),
+        }
+    }
+}
+
+pub struct Picture {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<Color>,
+}
+
+impl Default for Picture {
+    fn default() -> Picture {
+        Picture {
+            width: 800,
+            height: 600,
+            pixels: vec![Color::default(); 800 * 600],
+        }
+    }
 }
 
 impl Index<(usize, usize)> for Picture {
@@ -31,8 +56,11 @@ impl IndexMut<(usize, usize)> for Picture {
 impl Camera {
     pub fn new() -> Camera {
         Camera {
+            picture: Picture::default(),
             position: Point::new(0.0, 0.0, 0.0),
             direction: Vector { x: 0.0, y: 0.0, z: 1.0 },
+            up: Vector { x: 0.0, y: 1.0, z: 0.0 },
+            right: Vector { x: 1.0, y: 0.0, z: 0.0 },
         }
     }
 }
