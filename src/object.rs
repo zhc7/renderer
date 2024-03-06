@@ -10,8 +10,9 @@ pub struct Properties {
     pub shininess: f64,
 }
 
-pub struct Object {
-    pub triangles: Vec<Triangle>,
+pub struct Object<'a> {
+    pub triangles: Vec<Triangle<'a>>,
+    pub points: Vec<Point>,
     pub properties: Properties,
 }
 
@@ -27,25 +28,13 @@ impl Default for Properties {
     }
 }
 
-impl Object {
-    pub fn new() -> Object {
+impl<'a> Object<'a> {
+    pub fn new() -> Object<'a> {
         Object {
             triangles: Vec::new(),
+            points: Vec::new(),
             properties: Properties::default(),
         }
-    }
-    
-    pub fn get_points(&mut self) -> Vec<&mut Point> {
-        let mut points = Vec::new();
-        for triangle in &mut self.triangles {
-            for i in 0..3 {
-                let point = &mut triangle[i];
-                if !points.contains(&point) {
-                    points.push(point);
-                }
-            }
-        }
-        points
     }
 
     pub fn calc_triangle_norms(&mut self) {

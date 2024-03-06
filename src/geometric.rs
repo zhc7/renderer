@@ -1,5 +1,5 @@
 use std::hash::Hash;
-use std::ops::{Add, Div, Index, IndexMut, Mul, Neg, Sub};
+use std::ops::{Add, Div, Index, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vector {
@@ -27,11 +27,11 @@ pub struct Ray {
     pub direction: Vector,
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
-pub struct Triangle {
-    pub a: Point,
-    pub b: Point,
-    pub c: Point,
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+pub struct Triangle<'a> {
+    pub a: &'a Point,
+    pub b: &'a Point,
+    pub c: &'a Point,
     pub normal: Option<Vector>,
 }
 
@@ -187,8 +187,8 @@ impl From<Vector> for Point {
     }
 }
 
-impl Triangle {
-    pub fn new(a: Point, b: Point, c: Point) -> Triangle {
+impl<'a> Triangle<'a> {
+    pub fn new(a: &'a Point, b: &'a Point, c: &'a Point) -> Triangle<'a> {
         Triangle {
             a,
             b,
@@ -198,30 +198,30 @@ impl Triangle {
     }
 
     pub fn calc_norm(&mut self) {
-        let ab = Vector::from(&self.b) - Vector::from(&self.a);
-        let ac = Vector::from(&self.c) - Vector::from(&self.a);
+        let ab = Vector::from(self.b) - Vector::from(self.a);
+        let ac = Vector::from(self.c) - Vector::from(self.a);
         let normal = ab.cross(ac).normalize();
         self.normal = Some(normal);
     }
 
     pub fn size(&self) -> f64 {
-        let ab = Vector::from(&self.b) - Vector::from(&self.a);
-        let ac = Vector::from(&self.c) - Vector::from(&self.a);
+        let ab = Vector::from(self.b) - Vector::from(self.a);
+        let ac = Vector::from(self.c) - Vector::from(self.a);
         let cross = ab.cross(ac);
         cross.magnitude() / 2.0
     }
-    
+
     pub fn intersect(&self, ray: &Ray) -> Option<Point> {
-        let ab = Vector::from(&self.b) - Vector::from(&self.a);
-        let ac = Vector::from(&self.c) - Vector::from(&self.a);
+        let ab = Vector::from(self.b) - Vector::from(self.a);
+        let ac = Vector::from(self.c) - Vector::from(self.a);
         let normal = ab.cross(ac).normalize();
-        let d = -normal.dot(Vector::from(&self.a));
+        let d = -normal.dot(Vector::from(self.a));
         let t = -(normal.dot(Vector::from(&ray.start)) + d) / normal.dot(ray.direction);
         if t < 0.0 {
             return None;
         }
         let point = Vector::from(&ray.start) + ray.direction * t;
-        let ap = point - Vector::from(&self.a);
+        let ap = point - Vector::from(self.a);
         let dot00 = ac.dot(ac);
         let dot01 = ac.dot(ab);
         let dot02 = ac.dot(ap);
@@ -238,7 +238,7 @@ impl Triangle {
     }
 }
 
-impl Index<usize> for Triangle {
+impl<'a> Index<usize> for Triangle<'a> {
     type Output = Point;
 
     fn index(&self, index: usize) -> &Point {
@@ -251,13 +251,3 @@ impl Index<usize> for Triangle {
     }
 }
 
-impl IndexMut<usize> for Triangle {
-    fn index_mut(&mut self, index: usize) -> &mut Point {
-        match index {
-            0 => &mut self.a,
-            1 => &mut self.b,
-            2 => &mut self.c,
-            _ => panic!("Index out of bounds"),
-        }
-    }
-}
