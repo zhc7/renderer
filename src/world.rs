@@ -1,6 +1,6 @@
 use std::ops::Mul;
 
-use crate::camera::Camera;
+use crate::camera::{BufferItem, Camera};
 use crate::geometric::{Point, Ray, Triangle, Vector};
 use crate::light::{Color, Light};
 use crate::object::Object;
@@ -81,7 +81,7 @@ impl World {
         }
         self.objects.push(object);
     }
-    
+
     pub fn add_light(&mut self, light: Light, center: Point) {
         light.position.transform(&Matrix {
             m: [
@@ -106,20 +106,20 @@ impl World {
         self.camera.position.transform(&matrix);
     }
 
-    fn trace(&self, ray: &Ray) -> Color {
-        let mut nearest = None;
-        let mut nearest_distance = f64::INFINITY;
-        for object in &self.objects {
-            for triangle in &object.triangles {
-                if let Some((distance, point)) = triangle.intersect(ray) {
-                    if distance < nearest_distance {
-                        nearest_distance = distance;
-                        nearest = Some((point, object, triangle));
-                    }
-                }
-            }
-        }
-        if let Some((point, object, triangle)) = nearest {
+    fn trace(&self, ray: &Ray, triangle: Option<((&Triangle, &Object), f64, Point)>) -> Color {
+        // let mut nearest = None;
+        // let mut nearest_distance = f64::INFINITY;
+        // for object in &self.objects {
+        //     for triangle in &object.triangles {
+        //         if let Some((distance, point)) = triangle.intersect(ray) {
+        //             if distance < nearest_distance {
+        //                 nearest_distance = distance;
+        //                 nearest = Some((point, object, triangle));
+        //             }
+        //         }
+        //     }
+        // }
+        if let Some(((triangle, object), _, point)) = triangle {
             let mut color = Color::black();
             for light in &self.lights {
                 let normal = get_normal(&point, &triangle, NormMixMode::DistanceAverage);
@@ -137,7 +137,7 @@ impl World {
             object.calc_triangle_norms();
             object.calc_point_norms();
         }
-        
+
         // transform to camera view
         let mat_shift = Matrix {
             m: [
@@ -160,16 +160,33 @@ impl World {
         self.camera.direction = Vector::new(0.0, 0.0, 1.0);
         self.camera.up = Vector::new(0.0, 1.0, 0.0);
         self.camera.right = Vector::new(1.0, 0.0, 0.0);
+        let mut i = 1;
+        let mut triangles = vec![];
         for object in &mut self.objects {
             object.calc_triangle_norms();
+        }
+        
+        // project to camera buffer
+        for object in &self.objects {
+            for triangle in &object.triangles {
+                self.camera.project(triangle, i);
+                triangles.push((triangle, object));
+                i += 1;
+            }
         }
 
         // render
         for y in 0..self.camera.picture.height {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
-                let color = self.trace(&ray);
+                let BufferItem {index, depth, point} = self.camera.buffer[(x as usize, y as usize)].clone();
+                let color = self.trace(&ray, if index == 0 { None } else { Some((triangles[index - 1], depth, point)) });
                 self.camera.picture[(x as usize, y as usize)] = color;
+                // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
+                //     Color::black()
+                // } else {
+                //     Color::default()
+                // };
             }
         }
     }

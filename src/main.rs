@@ -4,6 +4,7 @@ use bmp::{Image, Pixel};
 
 use crate::camera::Picture;
 use crate::geometric::Point;
+use crate::light::Color;
 use crate::object::Properties;
 use crate::world::World;
 
@@ -15,7 +16,7 @@ mod world;
 mod shapes;
 
 
-fn save(picture: &Picture) {
+fn save(picture: &Picture<Color>) {
     let mut img = Image::new(picture.width, picture.height);
     for y in 0..picture.height {
         for x in 0..picture.width {
@@ -37,7 +38,7 @@ fn main() {
     // let mut object = shapes::cube();
     let mut object2 = shapes::sphere(15);
     let properties = Properties {
-        color: light::Color::default(),
+        color: Color::default(),
         ambient: 0.1,
         diffuse: 0.7,
         specular: 0.7,

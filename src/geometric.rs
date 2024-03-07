@@ -20,7 +20,7 @@ impl Vector {
             z,
         }
     }
-    
+
     pub fn zero() -> Vector {
         Vector {
             x: 0.0,
@@ -53,6 +53,10 @@ impl Point {
                 normal: None,
             })),
         }
+    }
+    
+    pub fn origin() -> Point {
+        Point::new(0., 0., 0.)
     }
 
     pub fn x(&self) -> f64 {
@@ -348,7 +352,7 @@ impl Triangle {
     pub fn intersect(&self, ray: &Ray) -> Option<(f64, Point)> {
         let ab = Vector::from(&self.b) - Vector::from(&self.a);
         let ac = Vector::from(&self.c) - Vector::from(&self.a);
-        let normal = ab.cross(ac).normalize();
+        let normal = self.normal.unwrap();
         let d = -normal.dot(Vector::from(&self.a));
         let t = -(normal.dot(Vector::from(&ray.start)) + d) / normal.dot(ray.direction);
         if t < 0.0 {
