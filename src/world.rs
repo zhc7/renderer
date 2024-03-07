@@ -37,13 +37,14 @@ pub struct World {
 
 pub enum NormMixMode {
     Flat,
-    DistanceAverage,
+    VertexDistanceReverseAverage,
+    VertexDistanceReverseFaceAverage,
 }
 
 fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
     match mode {
         NormMixMode::Flat => triangle.normal.unwrap(),
-        NormMixMode::DistanceAverage => {
+        NormMixMode::VertexDistanceReverseAverage => {
             // average normal of three vertices
             let mut normal = Vector::zero();
             let mut weights = 0.0;
@@ -55,7 +56,22 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
             }
             normal = normal / weights;
             normal
-        }
+        },
+        NormMixMode::VertexDistanceReverseFaceAverage => {
+            // average normal of three vertices and face normal
+            let mut normal = Vector::zero();
+            let mut weights = 0.0;
+            for i in 0..3 {
+                let ver = &triangle[i];
+                let w = 1. / point.distance(&ver);
+                normal = normal + ver.normal().unwrap() * w;
+                weights += w;
+            }
+            normal = normal / weights;
+            normal = normal + triangle.normal.unwrap();
+            normal = normal / 2.0;
+            normal
+        },
     }
 }
 
@@ -122,7 +138,7 @@ impl World {
         if let Some(((triangle, object), _, point)) = triangle {
             let mut color = Color::black();
             for light in &self.lights {
-                let normal = get_normal(&point, &triangle, NormMixMode::DistanceAverage);
+                let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
                 color = color + light.phong(&point, normal, ray.direction, &object.properties);
             }
             color
