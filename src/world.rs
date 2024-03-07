@@ -33,6 +33,7 @@ pub struct World {
     pub objects: Vec<Object>,
     pub lights: Vec<Light>,
     pub camera: Camera,
+    
 }
 
 pub enum NormMixMode {
@@ -122,23 +123,11 @@ impl World {
         self.camera.position.transform(&matrix);
     }
 
-    fn trace(&self, ray: &Ray, triangle: Option<((&Triangle, &Object), f64, Point)>) -> Color {
-        // let mut nearest = None;
-        // let mut nearest_distance = f64::INFINITY;
-        // for object in &self.objects {
-        //     for triangle in &object.triangles {
-        //         if let Some((distance, point)) = triangle.intersect(ray) {
-        //             if distance < nearest_distance {
-        //                 nearest_distance = distance;
-        //                 nearest = Some((point, object, triangle));
-        //             }
-        //         }
-        //     }
-        // }
+    fn coloring(&self, ray: &Ray, triangle: Option<((&Triangle, &Object), f64, Point)>) -> Color {
         if let Some(((triangle, object), _, point)) = triangle {
             let mut color = Color::black();
             for light in &self.lights {
-                let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
+                let normal = get_normal(&point, &triangle, NormMixMode::Flat);
                 color = color + light.phong(&point, normal, ray.direction, &object.properties);
             }
             color
@@ -203,7 +192,7 @@ impl World {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
                 let BufferItem {index, depth, point} = self.camera.buffer[(x as usize, y as usize)].clone();
-                let color = self.trace(&ray, if index == 0 { None } else { Some((triangles[index - 1], depth, point)) });
+                let color = self.coloring(&ray, if index == 0 { None } else { Some((triangles[index - 1], depth, point)) });
                 self.camera.picture[(x as usize, y as usize)] = color;
                 // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
                 //     Color::black()

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::hash::Hash;
-use std::ops::{Add, Div, Index, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, Index, Mul, Neg, Sub};
 use std::rc::Rc;
 
 use crate::world::Matrix;
@@ -214,6 +214,14 @@ impl Add<Vector> for Vector {
             y: self.y + rhs.y,
             z: self.z + rhs.z,
         }
+    }
+}
+
+impl AddAssign<Vector> for Vector {
+    fn add_assign(&mut self, rhs: Vector) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+        self.z += rhs.z;
     }
 }
 

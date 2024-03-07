@@ -16,6 +16,7 @@ mod camera;
 mod world;
 mod shapes;
 mod obj_parser;
+mod BVH;
 
 
 fn save(picture: &Picture<Color>) {
@@ -49,13 +50,13 @@ fn main() {
     // object.properties = properties.clone();
     object2.properties = properties.clone();
     // world.add_object(object, Point::new(0.0, 0.0, 10.0));
-    world.add_object(object2, Point::new(0.0, -20.0, 200.0));
+    world.add_object(object2, Point::new(0.0, -20.0, 150.0));
     world.add_light(light::Light {
         color: light::Color { r: 255, g: 255, b: 255 },
         position: Point::new(5.0, 200.0, 3.0),
     }, Point::new(0.0, 0.0, 0.0));
     world.camera.position = Point::new(-100.0, 60.0, 0.0);
-    world.camera.point_at(&Point::new(0.0, 0.0, 200.0));
+    world.camera.point_at(&Point::new(0.0, 0.0, 150.0));
     world.render();
     save(&world.camera.picture);
 }
