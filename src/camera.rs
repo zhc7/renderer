@@ -107,8 +107,8 @@ pub struct Picture<T> {
 impl<T> Default for Picture<T> where T: Default + Clone {
     fn default() -> Picture<T> {
         Picture {
-            width: 400,
-            height: 300,
+            width: 800,
+            height: 600,
             pixels: vec![T::default(); 800 * 600],
         }
     }

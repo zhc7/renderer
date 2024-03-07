@@ -36,7 +36,7 @@ fn main() {
     // left hind system!!!
     let mut world = World::new();
     // let mut object = shapes::cube();
-    let mut object2 = shapes::sphere(15);
+    let mut object2 = shapes::sphere(100);
     let properties = Properties {
         color: Color::default(),
         ambient: 0.1,
