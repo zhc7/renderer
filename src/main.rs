@@ -42,7 +42,7 @@ fn main() {
     let mut object2 = load(r"C:\Users\bjhan\3D Objects\3D Builder\Chess set.obj".as_ref());
     let properties = Properties {
         color: Color::default(),
-        ambient: 0.1,
+        ambient: 0.15,
         diffuse: 0.7,
         specular: 0.7,
         shininess: 10.0,

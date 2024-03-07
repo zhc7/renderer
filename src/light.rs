@@ -76,10 +76,13 @@ impl Light {
         }
     }
 
-    pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties) -> Color {
+    pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties, shadowed: bool) -> Color {
         let light_dir = Vector::from(&self.position) - Vector::from(point);
         let light_dir = light_dir.normalize();
         let ambient = self.color * properties.ambient;
+        if shadowed {
+            return ambient;
+        }
         let diffuse = self.color * light_dir.dot(normal).max(0.0) * properties.diffuse;
         let reflect = (light_dir - normal * light_dir.dot(normal) * 2.).normalize();
         let specular = self.color * reflect.dot(view).max(0.0).powf(properties.shininess) * properties.specular;

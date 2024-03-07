@@ -86,8 +86,8 @@ impl Camera {
         let max_x = projected_vertices.iter().map(|v| v.0).fold(f64::NEG_INFINITY, f64::max) as u32;
         let min_y = projected_vertices.iter().map(|v| v.1).fold(f64::INFINITY, f64::min) as u32;
         let max_y = projected_vertices.iter().map(|v| v.1).fold(f64::NEG_INFINITY, f64::max) as u32;
-        for y in min_y..=max_y {
-            for x in min_x..=max_x {
+        for y in min_y.max(0)..=max_y.min(self.picture.height - 1) {
+            for x in min_x.max(0)..=max_x.min(self.picture.width - 1) {
                 if let Some((depth, point)) = triangle.intersect(&self.get_ray(x, y)) {
                     if depth < self.buffer[(x as usize, y as usize)].depth {
                         self.buffer[(x as usize, y as usize)] = BufferItem { index, depth, point };

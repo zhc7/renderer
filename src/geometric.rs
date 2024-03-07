@@ -70,6 +70,15 @@ impl Point {
     pub fn z(&self) -> f64 {
         self.inner.borrow().z
     }
+    
+    pub fn index(&self, index: usize) -> f64 {
+        match index {
+            0 => self.x(),
+            1 => self.y(),
+            2 => self.z(),
+            _ => panic!("Index out of bounds"),
+        }
+    }
 
     pub fn normal(&self) -> Option<Vector> {
         self.inner.borrow().normal
@@ -279,6 +288,29 @@ impl Div<f64> for Vector {
     }
 }
 
+impl Index<usize> for Vector {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &f64 {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("Index out of bounds"),
+        }
+    }
+}
+
+impl From<[f64; 3]> for Vector {
+    fn from(array: [f64; 3]) -> Vector {
+        Vector {
+            x: array[0],
+            y: array[1],
+            z: array[2],
+        }
+    }
+}
+
 impl _Point {
     pub fn new(x: f64, y: f64, z: f64) -> _Point {
         _Point {
@@ -336,19 +368,6 @@ impl From<Vector> for _Point {
 impl From<Vector> for Point {
     fn from(vector: Vector) -> Point {
         Point::new(vector.x, vector.y, vector.z)
-    }
-}
-
-impl Index<usize> for Point {
-    type Output = f64;
-
-    fn index(&self, index: usize) -> &f64 {
-        match index {
-            0 => &self.x(),
-            1 => &self.y(),
-            2 => &self.z(),
-            _ => panic!("Index out of bounds"),
-        }
     }
 }
 

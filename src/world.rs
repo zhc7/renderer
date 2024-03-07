@@ -1,4 +1,5 @@
 use std::ops::Mul;
+use crate::BVH::BVH;
 
 use crate::camera::{BufferItem, Camera};
 use crate::geometric::{Point, Ray, Triangle, Vector};
@@ -33,7 +34,7 @@ pub struct World {
     pub objects: Vec<Object>,
     pub lights: Vec<Light>,
     pub camera: Camera,
-    
+    bvh: Option<BVH>,
 }
 
 pub enum NormMixMode {
@@ -82,6 +83,7 @@ impl World {
             objects: Vec::new(),
             lights: Vec::new(),
             camera: Camera::new(),
+            bvh: None,
         }
     }
 
@@ -123,12 +125,22 @@ impl World {
         self.camera.position.transform(&matrix);
     }
 
-    fn coloring(&self, ray: &Ray, triangle: Option<((&Triangle, &Object), f64, Point)>) -> Color {
-        if let Some(((triangle, object), _, point)) = triangle {
+    fn coloring(&self, ray: &Ray, triangle: Option<((&Triangle, &Object, usize), f64, Point)>) -> Color {
+        if let Some(((triangle, object, index), _, point)) = triangle {
             let mut color = Color::black();
             for light in &self.lights {
-                let normal = get_normal(&point, &triangle, NormMixMode::Flat);
-                color = color + light.phong(&point, normal, ray.direction, &object.properties);
+                let light_ray = Ray {
+                    start: light.position.clone(),
+                    direction: (Vector::from(&point) - Vector::from(&light.position)).normalize(),
+                };
+                let triangle_index = self.bvh.as_ref().unwrap().intersect(&light_ray);
+                let shadowed = if let Some(triangle_index) = triangle_index {
+                    triangle_index != index
+                } else {
+                    false
+                };
+                let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
+                color = color + light.phong(&point, normal, ray.direction, &object.properties, shadowed);
             }
             color
         } else {
@@ -172,27 +184,38 @@ impl World {
         self.camera.direction = Vector::new(0.0, 0.0, 1.0);
         self.camera.up = Vector::new(0.0, 1.0, 0.0);
         self.camera.right = Vector::new(1.0, 0.0, 0.0);
-        let mut i = 1;
-        let mut triangles = vec![];
         for object in &mut self.objects {
             object.calc_triangle_norms();
         }
         
         // project to camera buffer
+        let mut i = 1;
+        let mut triangle_object_s = vec![];
         for object in &self.objects {
             for triangle in &object.triangles {
                 self.camera.project(triangle, i);
-                triangles.push((triangle, object));
+                triangle_object_s.push((triangle, object, i - 1));
                 i += 1;
             }
         }
+        
+        // create bvh
+        let mut triangles = vec![];
+        for object in &self.objects {
+            for triangle in &object.triangles {
+                triangles.push(triangle);
+            }
+        }
+        let mut bvh = BVH::new();
+        bvh.build(&triangles);
+        self.bvh = Some(bvh);
 
         // render
         for y in 0..self.camera.picture.height {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
                 let BufferItem {index, depth, point} = self.camera.buffer[(x as usize, y as usize)].clone();
-                let color = self.coloring(&ray, if index == 0 { None } else { Some((triangles[index - 1], depth, point)) });
+                let color = self.coloring(&ray, if index == 0 { None } else { Some((triangle_object_s[index - 1], depth, point)) });
                 self.camera.picture[(x as usize, y as usize)] = color;
                 // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
                 //     Color::black()

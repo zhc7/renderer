@@ -41,8 +41,9 @@ pub fn cube() -> Object {
     object
 }
 
-pub fn sphere(resolution: usize) -> Object {
+pub fn sphere(resolution: usize, radius: Option<f64>) -> Object {
     let mut object = Object::new();
+    let radius = radius.unwrap_or(1.0);
 
     // Generate points
     for i in 0..=resolution {
@@ -55,9 +56,9 @@ pub fn sphere(resolution: usize) -> Object {
             let sin_phi = phi.sin();
             let cos_phi = phi.cos();
 
-            let x = sin_theta * cos_phi;
-            let y = sin_theta * sin_phi;
-            let z = cos_theta;
+            let x = sin_theta * cos_phi * radius;
+            let y = sin_theta * sin_phi * radius;
+            let z = cos_theta * radius;
 
             object.points.push(Point::new(x, y, z));
         }
