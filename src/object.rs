@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::geometric::{Point, Triangle};
 use crate::light::Color;
 
+#[derive(Clone)]
 pub struct Properties {
     pub color: Color,
     pub ambient: f64,

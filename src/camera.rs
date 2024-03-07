@@ -26,9 +26,12 @@ impl Camera {
 
 impl Camera {
     pub fn get_ray(&self, p0: u32, p1: u32) -> Ray {
-        let x = (p0 as f64 + 0.5) / self.picture.width as f64;
-        let y = (p1 as f64 + 0.5) / self.picture.height as f64;
-        let direction = self.direction + self.right * (x - 0.5) + self.up * (0.5 - y);
+        let baseline = self.picture.width.min(self.picture.height) as f64;
+        let x = (p0 as f64 + 0.5) / baseline;
+        let y = (p1 as f64 + 0.5) / baseline;
+        let direction = self.direction
+            + self.right * (x - self.picture.width as f64 / baseline / 2.)
+            + self.up * (self.picture.height as f64 / baseline / 2. - y);
         Ray {
             start: self.position.clone(),
             direction: direction.normalize(),
@@ -45,8 +48,8 @@ pub struct Picture {
 impl Default for Picture {
     fn default() -> Picture {
         Picture {
-            width: 800,
-            height: 600,
+            width: 400,
+            height: 300,
             pixels: vec![Color::default(); 800 * 600],
         }
     }

@@ -49,7 +49,7 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
             let mut weights = 0.0;
             for i in 0..3 {
                 let ver = &triangle[i];
-                let w = 1. / (1. + point.distance(&ver));
+                let w = 1. / point.distance(&ver);
                 normal = normal + ver.normal().unwrap() * w;
                 weights += w;
             }
@@ -122,7 +122,7 @@ impl World {
         if let Some((point, object, triangle)) = nearest {
             let mut color = Color::black();
             for light in &self.lights {
-                let normal = get_normal(&point, &triangle, NormMixMode::Flat);
+                let normal = get_normal(&point, &triangle, NormMixMode::DistanceAverage);
                 color = color + light.phong(&point, normal, ray.direction, &object.properties);
             }
             color
