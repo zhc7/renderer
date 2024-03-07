@@ -132,6 +132,13 @@ impl World {
     }
 
     pub fn render(&mut self) {
+        // count faces
+        let mut count = 0;
+        for object in &self.objects {
+            count += object.triangles.len();
+        }
+        println!("Rendering {} objects and {} faces", self.objects.len(), count);
+        
         // calculate normals
         for object in &mut self.objects {
             object.calc_triangle_norms();
