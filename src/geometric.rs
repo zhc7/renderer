@@ -40,7 +40,7 @@ struct _Point {
 
 #[derive(Debug)]
 pub struct Point {
-    inner : Rc<RefCell<_Point>>,
+    inner: Rc<RefCell<_Point>>,
 }
 
 impl Point {
@@ -54,7 +54,7 @@ impl Point {
             })),
         }
     }
-    
+
     pub fn origin() -> Point {
         Point::new(0., 0., 0.)
     }
@@ -112,6 +112,12 @@ impl PartialEq for Point {
 }
 
 impl Eq for Point {}
+
+impl From<[f64; 3]> for Point {
+    fn from(array: [f64; 3]) -> Point {
+        Point::new(array[0], array[1], array[2])
+    }
+}
 
 #[derive(Debug, Clone, Hash)]
 pub struct Segment {
@@ -330,6 +336,19 @@ impl From<Vector> for _Point {
 impl From<Vector> for Point {
     fn from(vector: Vector) -> Point {
         Point::new(vector.x, vector.y, vector.z)
+    }
+}
+
+impl Index<usize> for Point {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &f64 {
+        match index {
+            0 => &self.x(),
+            1 => &self.y(),
+            2 => &self.z(),
+            _ => panic!("Index out of bounds"),
+        }
     }
 }
 

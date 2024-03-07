@@ -29,6 +29,16 @@ struct BoxVolume {
     pub corresponding: Option<usize>,
 }
 
+impl BoxVolume {
+    fn new(min: Point, max: Point) -> BoxVolume {
+        BoxVolume {
+            min,
+            max,
+            corresponding: None,
+        }
+    }
+}
+
 struct BVHNode {
     volume: dyn Volume,
     left: Option<Box<BVHNode>>,
@@ -59,22 +69,16 @@ impl BVH {
     pub fn build(&mut self, triangles: &Vec<Triangle>) {
         let mut volumes = Vec::new();
         for triangle in triangles {
-            let mut min = (f64::INFINITY, f64::INFINITY, f64::INFINITY);
-            let mut max = (f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+            let mut min = [f64::INFINITY; 3];
+            let mut max = [f64::NEG_INFINITY; 3];
             for i in 0..3 {
                 let point = &triangle[i];
-                min.0 = min.0.min(point.x());
-                min.1 = min.1.min(point.y());
-                min.2 = min.2.min(point.z());
-                max.0 = max.0.max(point.x());
-                max.1 = max.1.max(point.y());
-                max.2 = max.2.max(point.z());
+                for j in 0..3 {
+                    min = min.min(point[j]);
+                    max = max.max(point[j]);
+                }
             }
-            let mut volume = BoxVolume {
-                min: Point::new(min.0, min.1, min.2),
-                max: Point::new(max.0, max.1, max.2),
-                corresponding: None,
-            };
+            let mut volume = BoxVolume::new(Point::from(min), Point::from(max));
             volume.corresponding = Some(volumes.len());
             volumes.push(volume);
         }
@@ -85,15 +89,15 @@ impl BVH {
         if end - start == 1 {
             return BVHNode::new(volumes[start].clone());
         }
-        let mut min = (f64::INFINITY, f64::INFINITY, f64::INFINITY);
-        let mut max = (f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+        let mut min = [f64::INFINITY; 3];
+        let mut max = [f64::NEG_INFINITY; 3];
         for i in start..end {
-            min.0 = min.0.min(volumes[i].min.x());
-            min.1 = min.1.min(volumes[i].min.y());
-            min.2 = min.2.min(volumes[i].min.z());
-            max.0 = max.0.max(volumes[i].max.x());
-            max.1 = max.1.max(volumes[i].max.y());
-            max.2 = max.2.max(volumes[i].max.z());
+            let volume = &volumes[i];
+            for j in 0..3 {
+                min = min.min(volume.min[j]);
+                max = max.max(volume.max[j]);
+            }
         }
-        let axis: usize = []
+        
+    }
 }
