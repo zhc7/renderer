@@ -92,7 +92,7 @@ impl Camera {
     }
     
     pub fn aligned(&self) -> bool {
-        self.position == Point::origin() 
+        Vector::from(&self.position) == Vector::zero()
             && self.direction == Vector { x: 0.0, y: 0.0, z: 1.0 } 
             && self.up == Vector { x: 0.0, y: 1.0, z: 0.0 }
             && self.right == Vector {x: 1.0, y: 0.0, z: 0.0}

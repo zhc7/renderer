@@ -110,13 +110,13 @@ impl Clone for Point {
 
 impl Hash for Point {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.inner.borrow().hash(state)
+        self.inner.as_ptr().hash(state);
     }
 }
 
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.borrow().eq(&*other.inner.borrow())
+        self.inner.as_ptr() == other.inner.as_ptr()
     }
 }
 
