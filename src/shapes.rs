@@ -1,6 +1,5 @@
-use crate::geometric::{Point, Triangle, Vector};
+use crate::geometric::{Point, Triangle};
 use crate::object::Object;
-
 
 pub fn cube() -> Object {
     let mut object = Object::new();
@@ -41,17 +40,16 @@ pub fn cube() -> Object {
     object
 }
 
-pub fn sphere(resolution: usize, radius: Option<f64>) -> Object {
+pub fn sphere(resolution: usize, radius: f64) -> Object {
     let mut object = Object::new();
-    let radius = radius.unwrap_or(1.0);
 
     // Generate points
-    for i in 0..=resolution {
+    for i in 1..resolution {
         let theta = (i as f64) * std::f64::consts::PI / (resolution as f64);
         let sin_theta = theta.sin();
         let cos_theta = theta.cos();
 
-        for j in 0..=resolution {
+        for j in 0..resolution {
             let phi = (j as f64) * 2.0 * std::f64::consts::PI / (resolution as f64);
             let sin_phi = phi.sin();
             let cos_phi = phi.cos();
@@ -59,37 +57,50 @@ pub fn sphere(resolution: usize, radius: Option<f64>) -> Object {
             let x = sin_theta * cos_phi * radius;
             let y = sin_theta * sin_phi * radius;
             let z = cos_theta * radius;
-
-            object.points.push(Point::new(x, y, z));
+            
+            let point = Point::new(x, y, z);
+            object.points.push(point);
         }
     }
+    // Add poles
+    object.points.push(Point::new(0.0, 0.0, radius));
+    object.points.push(Point::new(0.0, 0.0, -radius));
 
     // Generate triangles
-    for i in 0..resolution {
+    for i in 1..resolution - 1 {
         for j in 0..resolution {
-            let p1 = i * (resolution + 1) + j;
-            let p2 = p1 + (resolution + 1);
-
+            let a = (i - 1) * resolution + j;
+            let b = i * resolution + j;
+            let c = i * resolution + (j + 1) % resolution;
+            let d = (i - 1) * resolution + (j + 1) % resolution;
             object.triangles.push(Triangle::new(
-                &object.points[p1],
-                &object.points[p1 + 1],
-                &object.points[p2],
+                &object.points[a],
+                &object.points[b],
+                &object.points[c],
             ));
             object.triangles.push(Triangle::new(
-                &object.points[p2],
-                &object.points[p1 + 1],
-                &object.points[p2 + 1],
+                &object.points[a],
+                &object.points[c],
+                &object.points[d],
             ));
         }
+    }
+    // Add top triangles
+    for i in 0..resolution {
+        object.triangles.push(Triangle::new(
+            &object.points[object.points.len() - 2],
+            &object.points[i],
+            &object.points[(i + 1) % resolution],
+        ));
+    }
+    // Add bottom triangles
+    for i in 0..resolution {
+        object.triangles.push(Triangle::new(
+            &object.points[object.points.len() - 1],
+            &object.points[(resolution - 2) * resolution + (i + 1) % resolution],
+            &object.points[(resolution - 2) * resolution + i],
+        ));
     }
     
-    // adjust orientation
-    for triangle in &mut object.triangles {
-        triangle.calc_norm();
-        if triangle.normal.unwrap().dot(Vector::from(&triangle.a)) < 0.0 {
-            (triangle.a, triangle.c) = (triangle.c.clone(), triangle.a.clone());
-        }
-    }
-
     object
 }
