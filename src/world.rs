@@ -130,13 +130,13 @@ impl World {
         let (triangle, object, index) = seq[item.index];
         let point = &item.point;
         let mut color = Color::black();
-        
-        
+
+
         if let In((_, d)) = status {
             // we are at the back of the object, add transparency darken and spread
             return self.coloring(ray, buffered, seq, Status::Out) * object.properties.transparent.powf(item.depth - d);
         }
-        
+
         // direct lights
         for light in &self.lights {
             let light_ray = Ray {
@@ -173,16 +173,16 @@ impl World {
             let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
             color = color + light.phong(&point, normal, ray.direction, &object.properties, current);
         }
-        
+
         // reflected color
         // let reflection_ray = Ray {
         //     start: point.clone(),
         //     direction: ray.direction - triangle.normal.unwrap() * 2.0 * ray.direction.dot(triangle.normal.unwrap()),
         // };
-        
+
         // transparent color
         color += self.coloring(ray, buffered, seq, In((index, item.depth)));
-        
+
         color
     }
 

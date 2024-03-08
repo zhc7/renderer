@@ -17,6 +17,7 @@ mod world;
 mod shapes;
 mod obj_parser;
 mod BVH;
+mod test;
 
 
 fn save(picture: &Picture<Color>) {
@@ -39,15 +40,15 @@ fn main() {
     // left hind system!!!
     let mut world = World::new();
     // let mut object = shapes::cube();
-    let mut object2 = shapes::sphere(50, Some(50.0)); // load(r"C:\Users\bjhan\3D Objects\3D Builder\Chess set.obj".as_ref());
+    let mut object2 = load(r"C:\Users\bjhan\3D Objects\3D Builder\Chess set.obj".as_ref());
     let properties = Properties {
         color: Color::default(),
         ambient: 0.15,
-        diffuse: 0.7,
+        diffuse: 0.3,
         specular: 0.7,
         shininess: 10.0,
         reflect: 0.5,
-        transparent: 0.99999,
+        transparent: 0.85,
     };
     // object.properties = properties.clone();
     object2.properties = properties.clone();

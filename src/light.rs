@@ -39,7 +39,7 @@ impl Default for Color {
         Color {
             r: 64,
             g: 64,
-            b: 255,
+            b: 64,
         }
     }
 }
@@ -87,6 +87,7 @@ impl Light {
     }
 
     pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties, intensity: f64) -> Color {
+        assert!(1.0 - view.magnitude() < 1e-6);
         let light_dir = Vector::from(&self.position) - Vector::from(point);
         let light_dir = light_dir.normalize();
         let ambient = self.color * properties.ambient;
