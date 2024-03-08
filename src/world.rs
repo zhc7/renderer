@@ -194,12 +194,6 @@ impl World {
         }
         println!("Rendering {} objects and {} faces", self.objects.len(), count);
 
-        // calculate normals
-        for object in &mut self.objects {
-            object.calc_triangle_norms();
-            object.calc_point_norms();
-        }
-
         // transform to camera view
         let mat_shift = Matrix::shift(&-Vector::from(&self.camera.position));
         let mat_rotate = Matrix {
@@ -215,8 +209,11 @@ impl World {
         self.camera.direction = Vector::new(0.0, 0.0, 1.0);
         self.camera.up = Vector::new(0.0, 1.0, 0.0);
         self.camera.right = Vector::new(1.0, 0.0, 0.0);
+
+        // calculate normals
         for object in &mut self.objects {
             object.calc_triangle_norms();
+            object.calc_point_norms();
         }
 
         // project to camera buffer
