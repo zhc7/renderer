@@ -8,6 +8,8 @@ use crate::light::{Color, Light};
 use crate::object::Object;
 use crate::world::Status::In;
 
+use tqdm::tqdm;
+
 #[derive(Clone)]
 pub struct Matrix {
     pub m: [[f64; 4]; 4],
@@ -239,7 +241,7 @@ impl World {
         self.bvh = Some(bvh);
 
         // render
-        for y in 0..self.camera.picture.height {
+        for y in tqdm(0..self.camera.picture.height) {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
                 let mut buffered = self.camera.buffer[(x as usize, y as usize)].clone();
