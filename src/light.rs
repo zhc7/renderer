@@ -97,7 +97,6 @@ impl Light {
         let diffuse = self.color * light_dir.dot(normal).max(0.0) * properties.diffuse;
         let reflect = (light_dir - normal * light_dir.dot(normal) * 2.).normalize();
         let specular = self.color * reflect.dot(view).max(0.0).powf(properties.shininess) * properties.specular;
-        let color = ambient + diffuse + specular;
-        color * intensity
+        ambient + (diffuse + specular) * intensity
     }
 }
