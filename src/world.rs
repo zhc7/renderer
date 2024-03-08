@@ -11,6 +11,19 @@ pub struct Matrix {
     pub m: [[f64; 4]; 4],
 }
 
+impl Matrix {
+    fn shift(vector: &Vector) -> Matrix {
+        Matrix {
+            m: [
+                [1.0, 0.0, 0.0, vector.x],
+                [0.0, 1.0, 0.0, vector.y],
+                [0.0, 0.0, 1.0, vector.z],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+        }
+    }
+}
+
 impl Mul<Matrix> for Matrix {
     type Output = Matrix;
 
@@ -46,7 +59,7 @@ pub enum NormMixMode {
 fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
     match mode {
         NormMixMode::Flat => triangle.normal.unwrap(),
-        NormMixMode::VertexDistanceReverseAverage => {
+        NormMixMode::VertexDistanceReverseAverage | NormMixMode::VertexDistanceReverseFaceAverage => {
             // average normal of three vertices
             let mut normal = Vector::zero();
             let mut weights = 0.0;
@@ -57,22 +70,11 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
                 weights += w;
             }
             normal = normal / weights;
-            normal
-        },
-        NormMixMode::VertexDistanceReverseFaceAverage => {
-            // average normal of three vertices and face normal
-            let mut normal = Vector::zero();
-            let mut weights = 0.0;
-            for i in 0..3 {
-                let ver = &triangle[i];
-                let w = 1. / point.distance(&ver);
-                normal = normal + ver.normal().unwrap() * w;
-                weights += w;
+            match mode {
+                NormMixMode::VertexDistanceReverseAverage => normal,
+                NormMixMode::VertexDistanceReverseFaceAverage => (normal + triangle.normal.unwrap()) / 2.0,
+                _ => panic!(),
             }
-            normal = normal / weights;
-            normal = normal + triangle.normal.unwrap();
-            normal = normal / 2.0;
-            normal
         },
     }
 }
@@ -89,27 +91,13 @@ impl World {
 
     pub fn add_object(&mut self, object: Object, center: Point) {
         for point in &object.points {
-            point.transform(&Matrix {
-                m: [
-                    [1.0, 0.0, 0.0, center.x()],
-                    [0.0, 1.0, 0.0, center.y()],
-                    [0.0, 0.0, 1.0, center.z()],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-            });
+            point.transform(&Matrix::shift(&Vector::from(&center)));
         }
         self.objects.push(object);
     }
 
     pub fn add_light(&mut self, light: Light, center: Point) {
-        light.position.transform(&Matrix {
-            m: [
-                [1.0, 0.0, 0.0, center.x()],
-                [0.0, 1.0, 0.0, center.y()],
-                [0.0, 0.0, 1.0, center.z()],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-        });
+        light.position.transform(&Matrix::shift(&Vector::from(&center)));
         self.lights.push(light);
     }
 
@@ -163,14 +151,7 @@ impl World {
         }
 
         // transform to camera view
-        let mat_shift = Matrix {
-            m: [
-                [1.0, 0.0, 0.0, -self.camera.position.x()],
-                [0.0, 1.0, 0.0, -self.camera.position.y()],
-                [0.0, 0.0, 1.0, -self.camera.position.z()],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-        };
+        let mat_shift = Matrix::shift(&-Vector::from(&self.camera.position));
         let mat_rotate = Matrix {
             m: [
                 [self.camera.right.x, self.camera.right.y, self.camera.right.z, 0.0],
