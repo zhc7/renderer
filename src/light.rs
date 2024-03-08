@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 use std::ops::Mul;
 
 use crate::geometric::{Point, Vector};
@@ -39,7 +39,7 @@ impl Default for Color {
         Color {
             r: 64,
             g: 64,
-            b: 64,
+            b: 255,
         }
     }
 }
@@ -53,6 +53,16 @@ impl Add for Color {
             g: self.g.saturating_add(rhs.g),
             b: self.b.saturating_add(rhs.b),
         }
+    }
+}
+
+impl AddAssign for Color {
+    fn add_assign(&mut self, rhs: Color) {
+        *self = Color {
+            r: self.r.saturating_add(rhs.r),
+            g: self.g.saturating_add(rhs.g),
+            b: self.b.saturating_add(rhs.b),
+        };
     }
 }
 
@@ -76,11 +86,11 @@ impl Light {
         }
     }
 
-    pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties, shadowed: bool) -> Color {
+    pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties, intensity: f64) -> Color {
         let light_dir = Vector::from(&self.position) - Vector::from(point);
         let light_dir = light_dir.normalize();
         let ambient = self.color * properties.ambient;
-        if shadowed {
+        if intensity == 0.0 || light_dir.dot(normal) < 0.0 {
             return ambient;
         }
         let diffuse = self.color * light_dir.dot(normal).max(0.0) * properties.diffuse;

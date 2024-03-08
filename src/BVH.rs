@@ -157,50 +157,28 @@ impl BVH {
         node
     }
     
-    pub fn intersect(&self, ray: &Ray) -> Option<usize> {
+    pub fn intersect(&self, ray: &Ray) -> Vec<(usize, f64)> {
+        let mut result = Vec::new();
         if let Some(ref root) = self.root {
-            if let Some((index, _)) = BVH::intersect_node(root, ray) {
-                Some(index)
-            } else {
-                None
-            }
-        } else {
-            None
+            BVH::intersect_node(root, ray, &mut result);
         }
+        result.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        result
     }
     
-    fn intersect_node(node: &Box<BVHNode>, ray: &Ray) -> Option<(usize, f64)> {
+    fn intersect_node(node: &Box<BVHNode>, ray: &Ray, result: &mut Vec<(usize, f64)>) {
         if node.volume.possibly_intersect(ray) {
-            let left = if let Some(ref left) = node.left {
-                BVH::intersect_node(left, ray)
-            } else {
-                None
-            }.unwrap_or((0, f64::INFINITY));
-            let right = if let Some(ref right) = node.right {
-                BVH::intersect_node(right, ray)
-            } else {
-                None
-            }.unwrap_or((0, f64::INFINITY));
-            let this = if let Some(depth) = node.volume.intersect(ray) {
-                if let Some(corresponding) = node.volume.corresponding() {
-                    Some((corresponding, depth))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }.unwrap_or((0, f64::INFINITY));
-            if left.1 < right.1 && left.1 < this.1 {
-                Some(left)
-            } else if right.1 < this.1 {
-                Some(right)
-            } else if this.1 < f64::INFINITY {
-                Some(this)
-            } else {
-                None
+            if let Some(ref left) = node.left {
+                BVH::intersect_node(left, ray, result)
             }
-        } else {
-            None
+            if let Some(ref right) = node.right {
+                BVH::intersect_node(right, ray, result)
+            }
+            if let Some(depth) = node.volume.intersect(ray) {
+                if let Some(corresponding) = node.volume.corresponding() {
+                    result.push((corresponding, depth));
+                }
+            }
         }
     }
 }

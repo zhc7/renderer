@@ -10,6 +10,8 @@ pub struct Properties {
     pub diffuse: f64,
     pub specular: f64,
     pub shininess: f64,
+    pub reflect: f64,
+    pub transparent: f64,
 }
 
 pub struct Object {
@@ -26,6 +28,8 @@ impl Default for Properties {
             diffuse: 0.0,
             specular: 0.0,
             shininess: 0.0,
+            reflect: 0.0,
+            transparent: 0.0,
         }
     }
 }

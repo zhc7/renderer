@@ -1,3 +1,4 @@
+use std::collections::BinaryHeap;
 use std::ops::{Index, IndexMut};
 
 use crate::geometric::{Point, Ray, Triangle, Vector};
@@ -13,16 +14,48 @@ pub struct BufferItem {
 impl Default for BufferItem {
     fn default() -> Self {
         BufferItem {
-            index: 0,
+            index: usize::MAX,
             depth: f64::INFINITY,
             point: Point::origin(),
         }
     }
 }
 
+impl PartialEq for BufferItem {
+    fn eq(&self, other: &BufferItem) -> bool {
+        self.depth == other.depth
+    }
+}
+
+impl Eq for BufferItem {}
+
+impl PartialOrd for BufferItem {
+    fn partial_cmp(&self, other: &BufferItem) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for BufferItem {
+    fn cmp(&self, other: &BufferItem) -> std::cmp::Ordering {
+        self.depth.partial_cmp(&other.depth).unwrap().reverse()
+    }
+}
+
+pub struct BufferCell {
+    pub items: BinaryHeap<BufferItem>,
+}
+
+impl Default for BufferCell {
+    fn default() -> Self {
+        BufferCell {
+            items: BinaryHeap::new(),
+        }
+    }
+}
+
 pub struct Camera {
     pub picture: Picture<Color>,
-    pub buffer: Picture<BufferItem>, // index of triangle, depth
+    pub buffer: Picture<BinaryHeap<BufferItem>>, // index of triangle, depth
     pub position: Point,
     pub direction: Vector,
     pub up: Vector,
@@ -89,9 +122,7 @@ impl Camera {
         for y in min_y.max(0)..=max_y.min(self.picture.height - 1) {
             for x in min_x.max(0)..=max_x.min(self.picture.width - 1) {
                 if let Some((depth, point)) = triangle.intersect(&self.get_ray(x, y)) {
-                    if depth < self.buffer[(x as usize, y as usize)].depth {
-                        self.buffer[(x as usize, y as usize)] = BufferItem { index, depth, point };
-                    }
+                    self.buffer[(x as usize, y as usize)].push(BufferItem { index, depth, point });
                 }
             }
         }

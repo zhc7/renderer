@@ -1,3 +1,4 @@
+use std::collections::BinaryHeap;
 use std::ops::Mul;
 use crate::BVH::BVH;
 
@@ -5,6 +6,7 @@ use crate::camera::{BufferItem, Camera};
 use crate::geometric::{Point, Ray, Triangle, Vector};
 use crate::light::{Color, Light};
 use crate::object::Object;
+use crate::world::Status::In;
 
 #[derive(Clone)]
 pub struct Matrix {
@@ -75,8 +77,15 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
                 NormMixMode::VertexDistanceReverseFaceAverage => (normal + triangle.normal.unwrap()) / 2.0,
                 _ => panic!(),
             }
-        },
+        }
     }
+}
+
+#[derive(Clone, Copy)]
+enum Status {
+    In((usize, f64)),
+    // inside which object, at what depth
+    Out,
 }
 
 impl World {
@@ -113,27 +122,68 @@ impl World {
         self.camera.position.transform(&matrix);
     }
 
-    fn coloring(&self, ray: &Ray, triangle: Option<((&Triangle, &Object, usize), f64, Point)>) -> Color {
-        if let Some(((triangle, object, index), _, point)) = triangle {
-            let mut color = Color::black();
-            for light in &self.lights {
-                let light_ray = Ray {
-                    start: light.position.clone(),
-                    direction: (Vector::from(&point) - Vector::from(&light.position)).normalize(),
-                };
-                let triangle_index = self.bvh.as_ref().unwrap().intersect(&light_ray);
-                let shadowed = if let Some(triangle_index) = triangle_index {
-                    triangle_index != index
-                } else {
-                    false
-                };
-                let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
-                color = color + light.phong(&point, normal, ray.direction, &object.properties, shadowed);
-            }
-            color
-        } else {
-            Color::default()
+    fn coloring(&self, ray: &Ray, buffered: &mut BinaryHeap<BufferItem>, seq: &Vec<(&Triangle, &Object, usize)>, status: Status) -> Color {
+        if buffered.peek().is_none() {
+            return Color::default();
         }
+        let item = buffered.pop().unwrap();
+        let (triangle, object, index) = seq[item.index];
+        let point = &item.point;
+        let mut color = Color::black();
+        
+        
+        if let In((_, d)) = status {
+            // we are at the back of the object, add transparency darken and spread
+            return self.coloring(ray, buffered, seq, Status::Out) * object.properties.transparent.powf(item.depth - d);
+        }
+        
+        // direct lights
+        for light in &self.lights {
+            let light_ray = Ray {
+                start: light.position.clone(),
+                direction: (Vector::from(point) - Vector::from(&light.position)).normalize(),
+            };
+            let triangle_indices = self.bvh.as_ref().unwrap().intersect(&light_ray);
+
+            // calculate remaining light
+            let mut current = 1.0;
+            // we assume light is not inside anything
+            let mut status = Status::Out;
+
+            for (i, t) in triangle_indices {
+                if i == index {
+                    // reached
+                    break;
+                }
+                let object = seq[i].1;
+                match status {
+                    In((_, depth)) => {
+                        current *= object.properties.transparent.powf(t - depth);
+                        if current == 0.0 {
+                            break;
+                        }
+                        status = Status::Out;
+                    }
+                    Status::Out => {
+                        status = In((i, t));
+                    }
+                }
+            }
+
+            let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
+            color = color + light.phong(&point, normal, ray.direction, &object.properties, current);
+        }
+        
+        // reflected color
+        // let reflection_ray = Ray {
+        //     start: point.clone(),
+        //     direction: ray.direction - triangle.normal.unwrap() * 2.0 * ray.direction.dot(triangle.normal.unwrap()),
+        // };
+        
+        // transparent color
+        color += self.coloring(ray, buffered, seq, In((index, item.depth)));
+        
+        color
     }
 
     pub fn render(&mut self) {
@@ -143,7 +193,7 @@ impl World {
             count += object.triangles.len();
         }
         println!("Rendering {} objects and {} faces", self.objects.len(), count);
-        
+
         // calculate normals
         for object in &mut self.objects {
             object.calc_triangle_norms();
@@ -168,18 +218,18 @@ impl World {
         for object in &mut self.objects {
             object.calc_triangle_norms();
         }
-        
+
         // project to camera buffer
-        let mut i = 1;
+        let mut i = 0;
         let mut triangle_object_s = vec![];
         for object in &self.objects {
             for triangle in &object.triangles {
                 self.camera.project(triangle, i);
-                triangle_object_s.push((triangle, object, i - 1));
+                triangle_object_s.push((triangle, object, i));
                 i += 1;
             }
         }
-        
+
         // create bvh
         let mut triangles = vec![];
         for object in &self.objects {
@@ -195,8 +245,8 @@ impl World {
         for y in 0..self.camera.picture.height {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
-                let BufferItem {index, depth, point} = self.camera.buffer[(x as usize, y as usize)].clone();
-                let color = self.coloring(&ray, if index == 0 { None } else { Some((triangle_object_s[index - 1], depth, point)) });
+                let mut buffered = self.camera.buffer[(x as usize, y as usize)].clone();
+                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::Out);
                 self.camera.picture[(x as usize, y as usize)] = color;
                 // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
                 //     Color::black()
