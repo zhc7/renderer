@@ -17,7 +17,6 @@ mod world;
 mod shapes;
 mod obj_parser;
 mod BVH;
-mod test;
 
 
 fn save(picture: &Picture<Color>) {
@@ -41,25 +40,27 @@ fn main() {
     let mut world = World::new();
     // let mut object = shapes::cube();
     let mut object2 = load(r"C:\Users\bjhan\3D Objects\3D Builder\Chess set.obj".as_ref());
+    // let mut object = shapes::sphere(100, 30.0);
+    // let mut object2 = shapes::sphere(100, 30.0);
     let properties = Properties {
         color: Color::default(),
         ambient: 0.15,
-        diffuse: 0.3,
-        specular: 0.7,
+        diffuse: 0.2,
+        specular: 0.9,
         shininess: 10.0,
-        reflect: 0.5,
-        transparent: 0.85,
+        reflect: 0.6,
+        transparent: 0.8,
     };
     // object.properties = properties.clone();
     object2.properties = properties.clone();
-    // world.add_object(object, Point::new(0.0, 0.0, 10.0));
-    world.add_object(object2, Point::new(0.0, -20.0, 150.0));
+    // world.add_object(object, Point::new(-10.0, -20.0, 120.0));
+    world.add_object(object2, Point::new(0.0, -20.0, 120.0));
     world.add_light(light::Light {
         color: light::Color { r: 255, g: 255, b: 255 },
         position: Point::new(5.0, 200.0, 3.0),
     }, Point::new(0.0, 0.0, 0.0));
-    world.camera.position = Point::new(-100.0, 60.0, 0.0);
-    world.camera.point_at(&Point::new(0.0, 0.0, 150.0));
+    world.camera.position = Point::new(-50.0, 60.0, 0.0);
+    world.camera.point_at(&Point::new(0.0, 0.0, 120.0));
     world.render();
     save(&world.camera.picture);
 }

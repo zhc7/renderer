@@ -37,9 +37,9 @@ impl Color {
 impl Default for Color {
     fn default() -> Color {
         Color {
-            r: 64,
-            g: 64,
-            b: 64,
+            r: 0,
+            g: 0,
+            b: 0,
         }
     }
 }

@@ -1,3 +1,6 @@
+use std::collections::BinaryHeap;
+use std::fmt::Binary;
+use crate::camera::BufferItem;
 use crate::geometric::{Point, Ray, Triangle, Vector};
 
 trait Volume {
@@ -5,7 +8,7 @@ trait Volume {
 
     fn possibly_intersect(&self, ray: &Ray) -> bool;
     
-    fn intersect(&self, ray: &Ray) -> Option<f64>;
+    fn intersect(&self, ray: &Ray) -> Option<(f64, Point)>;
 }
 
 struct SphereVolume {
@@ -66,13 +69,9 @@ impl Volume for BoxVolume {
         t0 <= t1 && t1 > 0.0
     }
 
-    fn intersect(&self, ray: &Ray) -> Option<f64> {
+    fn intersect(&self, ray: &Ray) -> Option<(f64, Point)> {
         if let Some(ref triangle) = self.triangle {
-            if let Some((depth, _)) = triangle.intersect(ray) {
-                Some(depth)
-            } else {
-                None
-            }
+            triangle.intersect(ray)
         } else {
             None
         }
@@ -157,16 +156,15 @@ impl BVH {
         node
     }
     
-    pub fn intersect(&self, ray: &Ray) -> Vec<(usize, f64)> {
-        let mut result = Vec::new();
+    pub fn intersect(&self, ray: &Ray) -> BinaryHeap<BufferItem> {
+        let mut result = BinaryHeap::new();
         if let Some(ref root) = self.root {
             BVH::intersect_node(root, ray, &mut result);
         }
-        result.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         result
     }
     
-    fn intersect_node(node: &Box<BVHNode>, ray: &Ray, result: &mut Vec<(usize, f64)>) {
+    fn intersect_node(node: &Box<BVHNode>, ray: &Ray, result: &mut BinaryHeap<BufferItem>) {
         if node.volume.possibly_intersect(ray) {
             if let Some(ref left) = node.left {
                 BVH::intersect_node(left, ray, result)
@@ -174,9 +172,15 @@ impl BVH {
             if let Some(ref right) = node.right {
                 BVH::intersect_node(right, ray, result)
             }
-            if let Some(depth) = node.volume.intersect(ray) {
-                if let Some(corresponding) = node.volume.corresponding() {
-                    result.push((corresponding, depth));
+            if let Some(hit) = node.volume.intersect(ray) {
+                if hit.0 > 1e-10 {    // avoid hitting it self
+                    if let Some(corresponding) = node.volume.corresponding() {
+                        result.push(BufferItem {
+                            index: corresponding,
+                            depth: hit.0,
+                            point: hit.1,
+                        });
+                    }
                 }
             }
         }

@@ -80,7 +80,7 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
                 _ => panic!(),
             }
         }
-    }
+    }.normalize()
 }
 
 #[derive(Clone, Copy)]
@@ -124,7 +124,11 @@ impl World {
         self.camera.position.transform(&matrix);
     }
 
-    fn coloring(&self, ray: &Ray, buffered: &mut BinaryHeap<BufferItem>, seq: &Vec<(&Triangle, &Object, usize)>, status: Status) -> Color {
+    fn coloring(&self, ray: &Ray, buffered: &mut BinaryHeap<BufferItem>, seq: &Vec<(&Triangle, &Object, usize)>, status: Status, mut ttl: u32) -> Color {
+        if ttl == 0 {
+            return Color::black();
+        }
+        ttl -= 1;
         if buffered.peek().is_none() {
             return Color::default();
         }
@@ -136,9 +140,12 @@ impl World {
 
         if let In((_, d)) = status {
             // we are at the back of the object, add transparency darken and spread
-            return self.coloring(ray, buffered, seq, Status::Out) * object.properties.transparent.powf(item.depth - d);
+            return self.coloring(ray, buffered, seq, Status::Out, ttl) * object.properties.transparent.powf(item.depth - d);
         }
 
+        let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
+        assert!(1.0 - normal.magnitude() < 1e-6);
+        
         // direct lights
         for light in &self.lights {
             let light_ray = Ray {
@@ -152,7 +159,7 @@ impl World {
             // we assume light is not inside anything
             let mut status = Status::Out;
 
-            for (i, t) in triangle_indices {
+            for BufferItem { index: i, depth: t, point: _ } in triangle_indices {
                 if i == index {
                     // reached
                     break;
@@ -172,18 +179,31 @@ impl World {
                 }
             }
 
-            let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
             color = color + light.phong(&point, normal, ray.direction, &object.properties, current);
         }
+        
+        // Although the triangle is facing the camera, this point might be behind the camera because of interpolation,
+        // we don't calculate its reflection and transparency as it may lead to bigger mistakes.
+        if ttl > 0 && ray.direction.dot(normal) < 0.0 {
+            // reflected color
+            let tri_angle = ray.direction.dot(triangle.normal.unwrap());
+            assert!(tri_angle < 0.0);
+            let reflection_ray = Ray {
+                start: point.clone(),
+                direction: ray.direction + normal * 2.0 * -ray.direction.dot(normal),
+            };
+            let mut reflect_hit = self.bvh.as_ref().unwrap().intersect(&reflection_ray);
+            if reflect_hit.len() % 2 == 0 {
+                // those do not meet this requirement are also because of the interpolation
+                color += self.coloring(&reflection_ray, &mut reflect_hit, seq, Status::Out, ttl) * object.properties.reflect;
+            }
 
-        // reflected color
-        // let reflection_ray = Ray {
-        //     start: point.clone(),
-        //     direction: ray.direction - triangle.normal.unwrap() * 2.0 * ray.direction.dot(triangle.normal.unwrap()),
-        // };
-
-        // transparent color
-        color += self.coloring(ray, buffered, seq, In((index, item.depth)));
+            // transparent color
+            if buffered.len() % 2 != 1 {
+                panic!();
+            }
+            color += self.coloring(ray, buffered, seq, In((index, item.depth)), ttl);
+        }
 
         color
     }
@@ -245,7 +265,7 @@ impl World {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
                 let mut buffered = self.camera.buffer[(x as usize, y as usize)].clone();
-                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::Out);
+                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::Out, 32);
                 self.camera.picture[(x as usize, y as usize)] = color;
                 // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
                 //     Color::black()
