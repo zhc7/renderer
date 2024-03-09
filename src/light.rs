@@ -12,6 +12,7 @@ pub struct Color {
 }
 
 pub struct Light {
+    pub intensity: f64,
     pub color: Color,
     pub position: Point,
 }
@@ -79,24 +80,25 @@ impl Mul<f64> for Color {
 }
 
 impl Light {
-    pub fn new() -> Light {
+    pub fn new(intensity: f64) -> Light {
         Light {
+            intensity,
             color: Color::default(),
             position: Point::new(0.0, 0.0, 0.0),
         }
     }
 
-    pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties, intensity: f64) -> Color {
+    pub fn phong(&self, point: &Point, normal: Vector, view: Vector, properties: &Properties, occlusion: f64) -> Color {
         assert!(1.0 - view.magnitude() < 1e-6);
         let light_dir = Vector::from(&self.position) - Vector::from(point);
         let light_dir = light_dir.normalize();
         let ambient = self.color * properties.ambient;
-        if intensity == 0.0 || light_dir.dot(normal) < 0.0 {
+        if occlusion == 0.0 || light_dir.dot(normal) < 0.0 {
             return ambient;
         }
         let diffuse = self.color * light_dir.dot(normal).max(0.0) * properties.diffuse;
         let reflect = (light_dir - normal * light_dir.dot(normal) * 2.).normalize();
         let specular = self.color * reflect.dot(view).max(0.0).powf(properties.shininess) * properties.specular;
-        ambient + (diffuse + specular) * intensity
+        ambient + (diffuse + specular) * occlusion
     }
 }

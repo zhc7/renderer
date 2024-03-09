@@ -58,6 +58,7 @@ pub enum NormMixMode {
     Flat,
     VertexDistanceReverseAverage,
     VertexDistanceReverseFaceAverage,
+    Phong,
 }
 
 fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
@@ -79,6 +80,21 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
                 NormMixMode::VertexDistanceReverseFaceAverage => (normal + triangle.normal.unwrap()) / 2.0,
                 _ => panic!(),
             }
+        },
+        NormMixMode::Phong => {
+            // phong interpolation
+            let mut normal = Vector::zero();
+            let mut weights = 0.0;
+            for i in 0..3 {
+                let a = &triangle[i];
+                let b = &triangle[(i + 1) % 3];
+                let c = &triangle[(i + 2) % 3];
+                let w = (Vector::from(b) - Vector::from(point)).cross(Vector::from(c) - Vector::from(point)).magnitude();
+                normal = normal + a.normal().unwrap() * w;
+                weights += w;
+            }
+            normal = normal / weights;
+            normal
         }
     }.normalize()
 }
@@ -143,7 +159,7 @@ impl World {
             return self.coloring(ray, buffered, seq, Status::Out, ttl) * object.properties.transparent.powf(item.depth - d);
         }
 
-        let normal = get_normal(&point, &triangle, NormMixMode::VertexDistanceReverseFaceAverage);
+        let normal = get_normal(&point, &triangle, NormMixMode::Phong);
         assert!(1.0 - normal.magnitude() < 1e-6);
         
         // direct lights
