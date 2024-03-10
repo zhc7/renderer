@@ -212,10 +212,11 @@ impl From<&_Point> for Vector {
 
 impl From<&Point> for Vector {
     fn from(point: &Point) -> Vector {
+        let inner = &*point.inner.borrow();
         Vector {
-            x: point.x(),
-            y: point.y(),
-            z: point.z(),
+            x: inner.x,
+            y: inner.y,
+            z: inner.z,
         }
     }
 }

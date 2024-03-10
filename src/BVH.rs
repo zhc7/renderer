@@ -1,5 +1,6 @@
 use std::collections::BinaryHeap;
 use std::fmt::Binary;
+
 use crate::camera::BufferItem;
 use crate::geometric::{Point, Ray, Triangle, Vector};
 
@@ -7,7 +8,7 @@ trait Volume {
     fn corresponding(&self) -> Option<usize>;
 
     fn possibly_intersect(&self, ray: &Ray) -> bool;
-    
+
     fn intersect(&self, ray: &Ray) -> Option<(f64, Point)>;
 }
 
@@ -29,14 +30,14 @@ impl SphereVolume {
 
 #[derive(Clone)]
 struct BoxVolume {
-    min: Point,
-    max: Point,
+    min: Vector,
+    max: Vector,
     corresponding: Option<usize>,
     triangle: Option<Triangle>,
 }
 
 impl BoxVolume {
-    fn new(min: Point, max: Point) -> BoxVolume {
+    fn new(min: Vector, max: Vector) -> BoxVolume {
         BoxVolume {
             min,
             max,
@@ -54,18 +55,20 @@ impl Volume for BoxVolume {
     fn possibly_intersect(&self, ray: &Ray) -> bool {
         let mut t_min = [f64::INFINITY; 3];
         let mut t_max = [f64::NEG_INFINITY; 3];
+        let ray_start = Vector::from(&ray.start);
         for i in 0..3 {
             let inv_d = 1.0 / ray.direction[i];
-            let mut t0 = (self.min.index(i) - ray.start.index(i)) * inv_d;
-            let mut t1 = (self.max.index(i) - ray.start.index(i)) * inv_d;
+            let start = ray_start[i];
+            let mut t0 = (self.min[i] - start) * inv_d;
+            let mut t1 = (self.max[i] - start) * inv_d;
             if inv_d < 0.0 {
                 std::mem::swap(&mut t0, &mut t1);
             }
             t_min[i] = t_min[i].min(t0);
             t_max[i] = t_max[i].max(t1);
         }
-        let t0 = t_min.iter().fold(f64::NEG_INFINITY, |a, b| a.max(*b));
-        let t1 = t_max.iter().fold(f64::INFINITY, |a, b| a.min(*b));
+        let t0 = t_min[0].max(t_min[1]).max(t_min[2]);
+        let t1 = t_max[0].min(t_max[1]).min(t_max[2]);
         t0 <= t1 && t1 > 0.0
     }
 
@@ -111,13 +114,14 @@ impl BVH {
             let mut min = [f64::INFINITY; 3];
             let mut max = [f64::NEG_INFINITY; 3];
             for i in 0..3 {
-                let point = &triangle[i];
+                let point = Vector::from(&triangle[i]);
                 for j in 0..3 {
-                    min[j] = min[j].min(point.index(j));
-                    max[j] = max[j].max(point.index(j));
+                    let k = point[j];
+                    min[j] = min[j].min(k);
+                    max[j] = max[j].max(k);
                 }
             }
-            let mut volume = BoxVolume::new(Point::from(min), Point::from(max));
+            let mut volume = BoxVolume::new(min.into(), max.into());
             volume.corresponding = Some(volumes.len());
             volume.triangle = Some((*triangle).clone());
             volumes.push(volume);
@@ -135,8 +139,8 @@ impl BVH {
         for i in start..end {
             let volume = &volumes[i];
             for j in 0..3 {
-                min[j] = min[j].min(volume.min.index(j));
-                max[j] = max[j].max(volume.max.index(j));
+                min[j] = min[j].min(volume.min[j]);
+                max[j] = max[j].max(volume.max[j]);
             }
         }
         let axis = Vector::from(max) - Vector::from(min);
@@ -147,15 +151,15 @@ impl BVH {
             }
         }
         volumes[start..end].sort_by(|a, b| {
-            a.min.index(max_axis).partial_cmp(&b.min.index(max_axis)).unwrap()
+            a.min[max_axis].partial_cmp(&b.min[max_axis]).unwrap()
         });
         let mid = (start + end) / 2;
-        let mut node = BVHNode::new(BoxVolume::new(Point::from(min), Point::from(max)));
+        let mut node = BVHNode::new(BoxVolume::new(min.into(), max.into()));
         node.left = Some(Box::new(BVH::build_node(volumes, start, mid)));
         node.right = Some(Box::new(BVH::build_node(volumes, mid, end)));
         node
     }
-    
+
     pub fn intersect(&self, ray: &Ray) -> BinaryHeap<BufferItem> {
         let mut result = BinaryHeap::new();
         if let Some(ref root) = self.root {
@@ -163,7 +167,7 @@ impl BVH {
         }
         result
     }
-    
+
     fn intersect_node(node: &Box<BVHNode>, ray: &Ray, result: &mut BinaryHeap<BufferItem>) {
         if node.volume.possibly_intersect(ray) {
             if let Some(ref left) = node.left {
