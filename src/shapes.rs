@@ -1,17 +1,20 @@
 use crate::geometric::{Point, Triangle};
 use crate::object::Object;
 
-pub fn cube() -> Object {
+pub fn cube(length: f64, width: f64, height: f64) -> Object {
     let mut object = Object::new();
+    let c = length / 2.0;
+    let a = width / 2.0;
+    let b = height / 2.0;
     let points = [
-        [-1.0, -1.0, -1.0],
-        [1.0, -1.0, -1.0],
-        [1.0, 1.0, -1.0],
-        [-1.0, 1.0, -1.0],
-        [-1.0, -1.0, 1.0],
-        [1.0, -1.0, 1.0],
-        [1.0, 1.0, 1.0],
-        [-1.0, 1.0, 1.0],
+        [-a, -b, -c],
+        [a, -b, -c],
+        [a, b, -c],
+        [-a, b, -c],
+        [-a, -b, c],
+        [a, -b, c],
+        [a, b, c],
+        [-a, b, c],
     ];
     let triangles = [
         [0, 2, 1],

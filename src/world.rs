@@ -6,7 +6,7 @@ use crate::camera::{BufferItem, Camera};
 use crate::geometric::{Point, Ray, Triangle, Vector};
 use crate::light::{Color, Light};
 use crate::object::Object;
-use crate::world::Status::In;
+
 
 use tqdm::tqdm;
 
@@ -99,11 +99,39 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
     }.normalize()
 }
 
+fn refract(ray: &Ray, normal: Vector, n1: f64, n2: f64) -> (Option<Vector>, f64) {
+    let cos_theta_i = -ray.direction.dot(normal);
+    let sin_theta_i = (1.0 - cos_theta_i.powi(2)).sqrt();
+    let sin_theta_t = n1 / n2 * sin_theta_i;
+    if sin_theta_t > 1.0 {
+        return (None, 1.0);
+    }
+    let cos_theta_t = (1.0 - sin_theta_t.powi(2)).sqrt();
+    let r_parallel = (n1 * cos_theta_i - n2 * cos_theta_t) / (n1 * cos_theta_i + n2 * cos_theta_t);
+    let r_perpendicular = (n2 * cos_theta_i - n1 * cos_theta_t) / (n2 * cos_theta_i + n1 * cos_theta_t);
+    let reflect = (r_parallel.powi(2) + r_perpendicular.powi(2)) / 2.0;
+    let refract_direction = (ray.direction + normal * cos_theta_i) * (n1 / n2) - normal * cos_theta_t;
+    (Some(refract_direction), reflect)
+}
+
 #[derive(Clone, Copy)]
-enum Status {
-    In((usize, f64)),
+struct Status {
     // inside which object, at what depth
-    Out,
+    index: usize,
+    depth: f64,
+    refractive_index: f64,
+    transparency: f64,
+}
+
+impl Status {
+    fn air(depth: f64) -> Status {
+        Status {
+            index: usize::MAX,
+            depth,
+            refractive_index: 1.0,
+            transparency: 1.0,
+        }
+    }
 }
 
 impl World {
@@ -153,72 +181,126 @@ impl World {
         let point = &item.point;
         let mut color = Color::black();
 
-
-        if let In((_, d)) = status {
-            // we are at the back of the object, add transparency darken and spread
-            return self.coloring(ray, buffered, seq, Status::Out, ttl) * object.properties.transparent.powf(item.depth - d);
-        }
-
-        let normal = get_normal(&point, &triangle, NormMixMode::Phong);
-        assert!(1.0 - normal.magnitude() < 1e-6);
         
+        let normal = if triangle.size() < 100.0 {
+            get_normal(&point, &triangle, NormMixMode::Phong)
+        } else {
+            triangle.normal.unwrap()
+        };
+        assert!(1.0 - normal.magnitude() < 1e-6);
+
         // direct lights
-        for light in &self.lights {
-            let light_ray = Ray {
-                start: light.position.clone(),
-                direction: (Vector::from(point) - Vector::from(&light.position)).normalize(),
-            };
-            let triangle_indices = self.bvh.as_ref().unwrap().intersect(&light_ray);
+        if status.index == usize::MAX {
+            for light in &self.lights {
+                let light_ray = Ray {
+                    start: light.position.clone(),
+                    direction: (Vector::from(point) - Vector::from(&light.position)).normalize(),
+                };
+                let triangle_indices = self.bvh.as_ref().unwrap().intersect(&light_ray);
 
-            // calculate remaining light
-            let mut current = 1.0;
-            // we assume light is not inside anything
-            let mut status = Status::Out;
+                // calculate remaining light, ignore refraction
+                let mut current = 1.0;
+                // we assume light is not inside anything
+                let mut status = Status::air(0.0);
 
-            for BufferItem { index: i, depth: t, point: _ } in triangle_indices {
-                if i == index {
-                    // reached
-                    break;
-                }
-                let object = seq[i].1;
-                match status {
-                    In((_, depth)) => {
-                        current *= object.properties.transparent.powf(t - depth);
+                for BufferItem { index: i, depth: t, point: _ } in triangle_indices {
+                    if i == index {
+                        // reached
+                        break;
+                    }
+                    let object = seq[i].1;
+                    if status.index < usize::MAX {
+                        current *= object.properties.transparent.powf(t - status.depth);
                         if current == 0.0 {
                             break;
                         }
-                        status = Status::Out;
-                    }
-                    Status::Out => {
-                        status = In((i, t));
+                        status = Status::air(t);
+                    } else {
+                        status = Status {
+                            index: i,
+                            depth: t,
+                            refractive_index: object.properties.refractive_index,
+                            transparency: object.properties.transparent,
+                        };
                     }
                 }
-            }
 
-            color = color + light.phong(&point, normal, ray.direction, &object.properties, current);
+                color = color + light.phong(&point, normal, ray.direction, &object.properties, current);
+            }
         }
+
         
+        let normal = if status.index < usize::MAX {
+            // we are at the inner side of the object
+            -normal
+        } else {
+            normal
+        };
         // Although the triangle is facing the camera, this point might be behind the camera because of interpolation,
         // we don't calculate its reflection and transparency as it may lead to bigger mistakes.
-        if ttl > 0 && ray.direction.dot(normal) < 0.0 {
+        let cos_theta_i = -ray.direction.dot(normal);
+        if ttl > 0 && cos_theta_i > 0.0 {
             // reflected color
             let tri_angle = ray.direction.dot(triangle.normal.unwrap());
-            assert!(tri_angle < 0.0);
+            assert_eq!(tri_angle < 0.0, status.index == usize::MAX);
+            let absorbed = status.transparency.powf(item.depth - status.depth);
             let reflection_ray = Ray {
                 start: point.clone(),
-                direction: ray.direction + normal * 2.0 * -ray.direction.dot(normal),
+                direction: ray.direction + normal * 2.0 * cos_theta_i,
             };
             let mut reflect_hit = self.bvh.as_ref().unwrap().intersect(&reflection_ray);
-            if reflect_hit.len() % 2 == 0 {
+            if reflect_hit.len() % 2 == (status.index == usize::MAX) as usize {
                 // those do not meet this requirement are also because of the interpolation
-                color += self.coloring(&reflection_ray, &mut reflect_hit, seq, Status::Out, ttl) * object.properties.reflect;
+                // when in air, should hit even times
+                return color;
             }
+            // use fresnel equation to calculate the reflectivity
+            let n1: f64 = status.refractive_index;
+            let n2: f64 = if status.index == usize::MAX {
+                object.properties.refractive_index
+            } else {
+                1.0
+            };
+            let (refract_direction, reflect) = refract(ray, normal, n1, n2);
+            let refract = 1.0 - reflect;
+            color += self.coloring(&reflection_ray, &mut reflect_hit, seq, Status {
+                index: if status.index == usize::MAX {
+                    // from air, to air
+                    usize::MAX
+                } else {
+                    index
+                },
+                depth: item.depth,
+                // still inside the same medium
+                refractive_index: status.refractive_index,
+                transparency: status.transparency,
+            }, ttl) * reflect * absorbed;
 
             // transparent color
-            if buffered.len() % 2 != 1 {
-                panic!();
+            if object.properties.transparent == 0.0 || refract_direction.is_none() {
+                return color;
             }
-            color += self.coloring(ray, buffered, seq, In((index, item.depth)), ttl);
+            let refract_ray = Ray {
+                start: point.clone(),
+                direction: refract_direction.unwrap(),
+            };
+            let mut refract_hit = self.bvh.as_ref().unwrap().intersect(&refract_ray);
+            if refract_hit.len() % 2 == (status.index < usize::MAX) as usize {
+                // those do not meet this requirement are also because of the interpolation
+                // when in air, should hit odd times
+                return color;
+            }
+            color += self.coloring(&refract_ray, &mut refract_hit, seq, Status {
+                index: if status.index == usize::MAX {
+                    // from air, to object
+                    index
+                } else {
+                    usize::MAX
+                },
+                depth: item.depth,
+                refractive_index: n2,
+                transparency: object.properties.transparent,
+            }, ttl) * refract * absorbed;
         }
 
         color
@@ -281,7 +363,7 @@ impl World {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
                 let mut buffered = self.camera.buffer[(x as usize, y as usize)].clone();
-                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::Out, 32);
+                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::air(0.0), 7);
                 self.camera.picture[(x as usize, y as usize)] = color;
                 // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
                 //     Color::black()
