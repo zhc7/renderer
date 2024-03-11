@@ -53,23 +53,24 @@ impl Volume for BoxVolume {
     }
 
     fn possibly_intersect(&self, ray: &Ray) -> bool {
-        let mut t_min = [f64::INFINITY; 3];
-        let mut t_max = [f64::NEG_INFINITY; 3];
+        let mut t0 = f64::NEG_INFINITY;
+        let mut t1 = f64::INFINITY;
         let ray_start = Vector::from(&ray.start);
         for i in 0..3 {
             let inv_d = 1.0 / ray.direction[i];
             let start = ray_start[i];
-            let mut t0 = (self.min[i] - start) * inv_d;
-            let mut t1 = (self.max[i] - start) * inv_d;
+            let mut t0_ = (self.min[i] - start) * inv_d;
+            let mut t1_ = (self.max[i] - start) * inv_d;
             if inv_d < 0.0 {
-                std::mem::swap(&mut t0, &mut t1);
+                std::mem::swap(&mut t0_, &mut t1_);
             }
-            t_min[i] = t_min[i].min(t0);
-            t_max[i] = t_max[i].max(t1);
+            t0 = t0.max(t0_);
+            t1 = t1.min(t1_);
+            if t0 > t1 || t1 <= 0.0 {
+                return false;
+            }
         }
-        let t0 = t_min[0].max(t_min[1]).max(t_min[2]);
-        let t1 = t_max[0].min(t_max[1]).min(t_max[2]);
-        t0 <= t1 && t1 > 0.0
+        true
     }
 
     fn intersect(&self, ray: &Ray) -> Option<(f64, Point)> {
