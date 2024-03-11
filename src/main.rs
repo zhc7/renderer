@@ -34,7 +34,7 @@ fn save(picture: &Picture<Color>) {
 
 fn main() {
     // left hind system!!!
-    let mut world = worlds::balls();
+    let mut world = worlds::chess_set();
     world.render();
     save(&world.camera.picture);
 }

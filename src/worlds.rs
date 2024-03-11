@@ -9,21 +9,32 @@ pub fn chess_set() -> World {
     let mut world = World::new();
     // let mut object = shapes::cube();
     let mut object2 = load(r"C:\Users\bjhan\3D Objects\3D Builder\Chess set.obj".as_ref());
+    let mut floor = shapes::cube(200.0, 200.0, 1.0);
     // let mut object = shapes::sphere(100, 30.0);
     // let mut object2 = shapes::sphere(100, 30.0);
     let properties = Properties {
         color: Color::default(),
         ambient: 0.15,
-        diffuse: 0.2,
+        diffuse: 0.0,
         specular: 0.9,
         shininess: 10.0,
         refractive_index: 1.5,
-        transparent: 0.8,
+        transparent: 0.99,
     };
     // object.properties = properties.clone();
     object2.properties = properties.clone();
+    floor.properties = Properties {
+        color: Color { r: 30, g: 60, b: 200 },
+        ambient: 0.15,
+        diffuse: 0.8,
+        specular: 0.2,
+        shininess: 1.0,
+        refractive_index: 1.5,
+        transparent: 0.0,
+    };
     // world.add_object(object, Point::new(-10.0, -20.0, 120.0));
     world.add_object(object2, Point::new(0.0, -20.0, 120.0));
+    world.add_object(floor, Point::new(0.0, -30.0, 150.0));
     world.add_light(light::Light {
         intensity: 100000.0,
         color: Color { r: 255, g: 255, b: 255 },
@@ -47,9 +58,9 @@ pub fn balls() -> World {
         specular: 0.9,
         shininess: 10.0,
         refractive_index: 1.5,
-        transparent: 1.0,
+        transparent: 0.999,
     };
-    
+
     b1.properties = properties.clone();
     b2.properties = properties.clone();
     b3.properties = properties.clone();

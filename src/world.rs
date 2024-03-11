@@ -180,8 +180,9 @@ impl World {
         let (triangle, object, index) = seq[item.index];
         let point = &item.point;
         let mut color = Color::black();
+        let absorbed = status.transparency.powf(item.depth);
 
-        
+
         let normal = if triangle.size() < 100.0 {
             get_normal(&point, &triangle, NormMixMode::Phong)
         } else {
@@ -203,7 +204,7 @@ impl World {
                 // we assume light is not inside anything
                 let mut status = Status::air(0.0);
 
-                for BufferItem { index: i, depth: t, point: _ } in triangle_indices {
+                for BufferItem { index: i, depth: t, point: _ } in triangle_indices.into_sorted_vec().into_iter().rev() {
                     if i == index {
                         // reached
                         break;
@@ -229,7 +230,7 @@ impl World {
             }
         }
 
-        
+
         let normal = if status.index < usize::MAX {
             // we are at the inner side of the object
             -normal
@@ -243,7 +244,6 @@ impl World {
             // reflected color
             let tri_angle = ray.direction.dot(triangle.normal.unwrap());
             assert_eq!(tri_angle < 0.0, status.index == usize::MAX);
-            let absorbed = status.transparency.powf(item.depth - status.depth);
             let reflection_ray = Ray {
                 start: point.clone(),
                 direction: ray.direction + normal * 2.0 * cos_theta_i,
@@ -252,7 +252,7 @@ impl World {
             if reflect_hit.len() % 2 == (status.index == usize::MAX) as usize {
                 // those do not meet this requirement are also because of the interpolation
                 // when in air, should hit even times
-                return color;
+                return color * absorbed;
             }
             // use fresnel equation to calculate the reflectivity
             let n1: f64 = status.refractive_index;
@@ -270,15 +270,15 @@ impl World {
                 } else {
                     index
                 },
-                depth: item.depth,
+                depth: item.depth + status.depth,
                 // still inside the same medium
                 refractive_index: status.refractive_index,
                 transparency: status.transparency,
-            }, ttl) * reflect * absorbed;
+            }, ttl) * reflect;
 
             // transparent color
             if object.properties.transparent == 0.0 || refract_direction.is_none() {
-                return color;
+                return color * absorbed;
             }
             let refract_ray = Ray {
                 start: point.clone(),
@@ -288,7 +288,7 @@ impl World {
             if refract_hit.len() % 2 == (status.index < usize::MAX) as usize {
                 // those do not meet this requirement are also because of the interpolation
                 // when in air, should hit odd times
-                return color;
+                return color * absorbed;
             }
             color += self.coloring(&refract_ray, &mut refract_hit, seq, Status {
                 index: if status.index == usize::MAX {
@@ -297,13 +297,13 @@ impl World {
                 } else {
                     usize::MAX
                 },
-                depth: item.depth,
+                depth: item.depth + status.depth,
                 refractive_index: n2,
                 transparency: object.properties.transparent,
-            }, ttl) * refract * absorbed;
+            }, ttl) * refract;
         }
 
-        color
+        color * absorbed
     }
 
     pub fn render(&mut self) {
@@ -363,7 +363,7 @@ impl World {
             for x in 0..self.camera.picture.width {
                 let ray = self.camera.get_ray(x, y);
                 let mut buffered = self.camera.buffer[(x as usize, y as usize)].clone();
-                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::air(0.0), 7);
+                let color = self.coloring(&ray, &mut buffered, &triangle_object_s, Status::air(0.0), 10);
                 self.camera.picture[(x as usize, y as usize)] = color;
                 // self.camera.picture[(x as usize, y as usize)] = if self.camera.buffer[(x as usize, y as usize)].0 != usize::default() {
                 //     Color::black()
