@@ -1,5 +1,4 @@
 use std::collections::BinaryHeap;
-use std::fmt::Binary;
 
 use crate::camera::BufferItem;
 use crate::geometric::{Point, Ray, Triangle, Vector};
@@ -82,8 +81,9 @@ impl Volume for BoxVolume {
     }
 }
 
+#[derive(Clone)]
 struct BVHNode {
-    volume: Box<dyn Volume>,
+    volume: Box<BoxVolume>,
     left: Option<Box<BVHNode>>,
     right: Option<Box<BVHNode>>,
 }
@@ -98,6 +98,7 @@ impl BVHNode {
     }
 }
 
+#[derive(Clone)]
 pub struct BVH {
     root: Option<Box<BVHNode>>,
 }

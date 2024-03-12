@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use crate::geometric::{Point, Triangle};
-use crate::light::Color;
+use crate::light::SColor;
 
 #[derive(Clone)]
 pub struct Properties {
-    pub color: Color,
+    pub color: SColor,
     pub ambient: f64,
     pub diffuse: f64,
     pub specular: f64,
@@ -16,6 +16,7 @@ pub struct Properties {
     pub metallic: f64,
 }
 
+#[derive(Clone)]
 pub struct Object {
     pub triangles: Vec<Triangle>,
     pub points: Vec<Point>,
@@ -25,7 +26,7 @@ pub struct Object {
 impl Default for Properties {
     fn default() -> Properties {
         Properties {
-            color: Color::default(),
+            color: SColor::default(),
             ambient: 0.0,
             diffuse: 0.0,
             specular: 0.0,

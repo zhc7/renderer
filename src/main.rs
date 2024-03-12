@@ -2,8 +2,10 @@ extern crate bmp;
 
 use bmp::{Image, Pixel};
 
+use crate::arguments::AntiAliasing::SSAA;
+use crate::arguments::RenderArgs;
 use crate::camera::Picture;
-use crate::light::Color;
+use crate::light::SColor;
 
 mod geometric;
 mod light;
@@ -14,9 +16,10 @@ mod shapes;
 mod obj_parser;
 mod BVH;
 mod worlds;
+mod arguments;
 
 
-fn save(picture: &Picture<Color>) {
+pub fn save(picture: &Picture<SColor>, name: &str) {
     let mut img = Image::new(picture.width, picture.height);
     for y in 0..picture.height {
         for x in 0..picture.width {
@@ -28,13 +31,18 @@ fn save(picture: &Picture<Color>) {
             });
         }
     }
-    img.save("output.bmp").unwrap();
+    img.save(name).unwrap();
 }
 
 
 fn main() {
     // left hind system!!!
     let mut world = worlds::chess_set();
-    world.render();
-    save(&world.camera.picture);
+    let render_args = RenderArgs {
+        threads: 8,
+        anti_aliasing: SSAA,
+        ..RenderArgs::default()
+    };
+    world.render(render_args);
+    save(&world.camera.picture, "output.bmp");
 }

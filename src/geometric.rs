@@ -1,7 +1,7 @@
-use std::cell::RefCell;
 use std::hash::Hash;
 use std::ops::{Add, AddAssign, Div, Index, Mul, Neg, Sub};
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
+
 
 use crate::world::Matrix;
 
@@ -40,13 +40,13 @@ struct _Point {
 
 #[derive(Debug)]
 pub struct Point {
-    inner: Rc<RefCell<_Point>>,
+    inner: Arc<RwLock<_Point>>,
 }
 
 impl Point {
     pub fn new(x: f64, y: f64, z: f64) -> Point {
         Point {
-            inner: Rc::new(RefCell::new(_Point {
+            inner: Arc::new(RwLock::new(_Point {
                 x,
                 y,
                 z,
@@ -60,15 +60,15 @@ impl Point {
     }
 
     pub fn x(&self) -> f64 {
-        self.inner.borrow().x
+        self.inner.read().unwrap().x
     }
 
     pub fn y(&self) -> f64 {
-        self.inner.borrow().y
+        self.inner.read().unwrap().y
     }
 
     pub fn z(&self) -> f64 {
-        self.inner.borrow().z
+        self.inner.read().unwrap().z
     }
     
     pub fn index(&self, index: usize) -> f64 {
@@ -81,15 +81,15 @@ impl Point {
     }
 
     pub fn normal(&self) -> Option<Vector> {
-        self.inner.borrow().normal
+        self.inner.read().unwrap().normal
     }
 
     pub fn set_normal(&self, normal: Vector) {
-        self.inner.borrow_mut().normal = Some(normal);
+        self.inner.write().unwrap().normal = Some(normal);
     }
 
     pub fn transform(&self, matrix: &Matrix) {
-        self.inner.borrow_mut().transform(matrix);
+        self.inner.write().unwrap().transform(matrix);
     }
 
     pub fn distance(&self, other: &Point) -> f64 {
@@ -103,20 +103,20 @@ impl Point {
 impl Clone for Point {
     fn clone(&self) -> Point {
         Point {
-            inner: Rc::clone(&self.inner),
+            inner: Arc::clone(&self.inner),
         }
     }
 }
 
 impl Hash for Point {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.inner.as_ptr().hash(state);
+        Arc::as_ptr(&self.inner).hash(state);
     }
 }
 
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.as_ptr() == other.inner.as_ptr()
+        Arc::as_ptr(&self.inner) == Arc::as_ptr(&other.inner)
     }
 }
 
@@ -212,7 +212,7 @@ impl From<&_Point> for Vector {
 
 impl From<&Point> for Vector {
     fn from(point: &Point) -> Vector {
-        let inner = &*point.inner.borrow();
+        let inner = &*point.inner.read().unwrap();
         Vector {
             x: inner.x,
             y: inner.y,

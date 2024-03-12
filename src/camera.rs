@@ -2,7 +2,7 @@ use std::collections::BinaryHeap;
 use std::ops::{Index, IndexMut};
 
 use crate::geometric::{Point, Ray, Triangle, Vector};
-use crate::light::Color;
+use crate::light::SColor;
 
 #[derive(Clone)]
 pub struct BufferItem {
@@ -53,8 +53,9 @@ impl Default for BufferCell {
     }
 }
 
+#[derive(Clone)]
 pub struct Camera {
-    pub picture: Picture<Color>,
+    pub picture: Picture<SColor>,
     pub buffer: Picture<BinaryHeap<BufferItem>>, // index of triangle, depth
     pub position: Point,
     pub direction: Vector,
@@ -129,10 +130,21 @@ impl Camera {
     }
 }
 
+#[derive(Clone)]
 pub struct Picture<T> {
     pub width: u32,
     pub height: u32,
     pub pixels: Vec<T>,
+}
+
+impl<T> Picture<T> where T: Default + Clone {
+    pub fn new(width: u32, height: u32) -> Picture<T> {
+        Picture {
+            width,
+            height,
+            pixels: vec![T::default(); width as usize * height as usize],
+        }
+    }
 }
 
 impl<T> Default for Picture<T> where T: Default + Clone {
@@ -159,20 +171,42 @@ impl<T> IndexMut<(usize, usize)> for Picture<T> {
     }
 }
 
+impl Default for Camera {
+    fn default() -> Camera {
+        let picture: Picture<SColor> = Picture::default();
+        Camera::new(picture.width, picture.height, None)
+    }
+
+}
+
 impl Camera {
-    pub fn new() -> Camera {
-        let picture = Picture::default();
-        let depth = picture.width.min(picture.height) as f64;
+    pub fn new(width: u32, height: u32, depth: Option<f64>) -> Camera {
+        let picture = Picture::new(width, height);
+        let depth = match depth {
+            Some(d) => d,
+            None => picture.width.min(picture.height) as f64,
+        };
         Camera {
             horizontal_half: picture.width as f64 / depth / 2.,
             vertical_half: picture.height as f64 / depth / 2.,
+            buffer: Picture::new(picture.width, picture.height),
             picture,
-            buffer: Picture::default(),
             position: Point::new(0.0, 0.0, 0.0),
             direction: Vector { x: 0.0, y: 0.0, z: 1.0 },
             up: Vector { x: 0.0, y: 1.0, z: 0.0 },
             right: Vector { x: 1.0, y: 0.0, z: 0.0 },
             depth,
         }
+    }
+    
+    pub fn reset(&mut self, width: u32, height: u32, depth: Option<f64>) {
+        self.picture = Picture::new(width, height);
+        let depth = match depth {
+            Some(d) => d,
+            None => self.picture.width.min(self.picture.height) as f64,
+        };
+        self.horizontal_half = self.picture.width as f64 / depth / 2.;
+        self.vertical_half = self.picture.height as f64 / depth / 2.;
+        self.buffer = Picture::new(self.picture.width, self.picture.height);
     }
 }
