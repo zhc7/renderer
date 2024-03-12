@@ -4,8 +4,8 @@ use crate::BVH::BVH;
 
 use crate::camera::{BufferItem, Camera};
 use crate::geometric::{Point, Ray, Triangle, Vector};
-use crate::light::{Color, Light};
-use crate::object::Object;
+use crate::light::{Color, Light, Radiance, Ratio};
+use crate::object::{Object, Properties};
 
 
 use tqdm::tqdm;
@@ -99,7 +99,7 @@ fn get_normal(point: &Point, triangle: &Triangle, mode: NormMixMode) -> Vector {
     }.normalize()
 }
 
-fn refract(ray: &Ray, normal: Vector, n1: f64, n2: f64) -> (Option<Vector>, f64) {
+fn fresnel_refract(ray: &Ray, normal: Vector, n1: f64, n2: f64) -> (Option<Vector>, f64) {
     let cos_theta_i = -ray.direction.dot(normal);
     let sin_theta_i = (1.0 - cos_theta_i.powi(2)).sqrt();
     let sin_theta_t = n1 / n2 * sin_theta_i;
@@ -112,6 +112,24 @@ fn refract(ray: &Ray, normal: Vector, n1: f64, n2: f64) -> (Option<Vector>, f64)
     let reflect = (r_parallel.powi(2) + r_perpendicular.powi(2)) / 2.0;
     let refract_direction = (ray.direction + normal * cos_theta_i) * (n1 / n2) - normal * cos_theta_t;
     (Some(refract_direction), reflect)
+}
+
+fn smith_ggx(cos: f64, alpha_squared: f64) -> f64 {
+    2.0 * cos / (cos + (alpha_squared + (1.0 - alpha_squared) * cos.powi(2)).sqrt())
+}
+
+fn cook_torrance(input_ray: &Ray, view_ray: &Ray, normal: Vector, fresnel: f64, properties: &Properties) -> Ratio {
+    let half = -(input_ray.direction + view_ray.direction) / 2.0;
+    let alpha_squared = properties.roughness.powi(2);
+    let cos_h = half.dot(normal);
+    // GTR gamma=2
+    let specular_d = alpha_squared / std::f64::consts::PI / (cos_h.powi(2) * (alpha_squared - 1.0) + 1.0).powi(2);
+    // Smith GGX
+    let cos_i = -input_ray.direction.dot(normal);
+    let cos_o = -view_ray.direction.dot(normal);
+    let specular_g = smith_ggx(cos_i, alpha_squared) * smith_ggx(cos_o, alpha_squared);
+    let diffuse = Ratio::from(properties.color) / std::f64::consts::PI * (1.0 - fresnel) * (1.0 - properties.metallic);
+    diffuse + fresnel * specular_g + specular_d / (4.0 * cos_i * cos_o)
 }
 
 #[derive(Clone, Copy)]
@@ -261,7 +279,7 @@ impl World {
             } else {
                 1.0
             };
-            let (refract_direction, reflect) = refract(ray, normal, n1, n2);
+            let (refract_direction, reflect) = fresnel_refract(ray, normal, n1, n2);
             let refract = 1.0 - reflect;
             color += self.coloring(&reflection_ray, &mut reflect_hit, seq, Status {
                 index: if status.index == usize::MAX {

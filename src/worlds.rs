@@ -20,6 +20,7 @@ pub fn chess_set() -> World {
         shininess: 10.0,
         refractive_index: 1.5,
         transparent: 0.99,
+        ..Properties::default()
     };
     // object.properties = properties.clone();
     object2.properties = properties.clone();
@@ -59,6 +60,7 @@ pub fn balls() -> World {
         shininess: 10.0,
         refractive_index: 1.5,
         transparent: 0.999,
+        ..Properties::default()
     };
 
     b1.properties = properties.clone();
@@ -72,6 +74,7 @@ pub fn balls() -> World {
         shininess: 1.0,
         refractive_index: 1.5,
         transparent: 0.0,
+        ..Properties::default()
     };
     world.add_object(b1, Point::new(-20.0, 0.0, 120.0));
     world.add_object(b2, Point::new(20.0, 0.0, 120.0));

@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, AddAssign, Div, Sub};
 use std::ops::Mul;
 
 use crate::geometric::{Point, Vector};
@@ -11,8 +11,22 @@ pub struct Color {
     pub b: u8,
 }
 
+#[derive(Clone, Copy)]
+pub struct Radiance {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+}
+
+#[derive(Clone, Copy)]
+pub struct Ratio {
+    pub r: f64,
+    pub g: f64,
+    pub b: f64,
+}
+
 pub struct Light {
-    pub intensity: f64,
+    pub radiance: Radiance,
     pub color: Color,
     pub position: Point,
 }
@@ -79,10 +93,122 @@ impl Mul<f64> for Color {
     }
 }
 
+impl Default for Radiance {
+    fn default() -> Radiance {
+        Radiance {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+        }
+    }
+}
+
+impl From<Color> for Ratio {
+    fn from(color: Color) -> Ratio {
+        Ratio {
+            r: color.r as f64 / 255.0,
+            g: color.g as f64 / 255.0,
+            b: color.b as f64 / 255.0,
+        }
+    }
+}
+
+impl Add<f64> for Ratio {
+    type Output = Ratio;
+
+    fn add(self, rhs: f64) -> Ratio {
+        Ratio {
+            r: self.r + rhs,
+            g: self.g + rhs,
+            b: self.b + rhs,
+        }
+    }
+}
+
+impl Mul<f64> for Ratio {
+    type Output = Ratio;
+
+    fn mul(self, rhs: f64) -> Ratio {
+        Ratio {
+            r: self.r * rhs,
+            g: self.g * rhs,
+            b: self.b * rhs,
+        }
+    }
+}
+
+impl Div<f64> for Ratio {
+    type Output = Ratio;
+
+    fn div(self, rhs: f64) -> Ratio {
+        Ratio {
+            r: self.r / rhs,
+            g: self.g / rhs,
+            b: self.b / rhs,
+        }
+    }
+}
+
+impl Add<Radiance> for Radiance {
+    type Output = Radiance;
+
+    fn add(self, rhs: Radiance) -> Radiance {
+        Radiance {
+            r: self.r + rhs.r,
+            g: self.g + rhs.g,
+            b: self.b + rhs.b,
+        }
+    }
+}
+
+impl AddAssign<Radiance> for Radiance {
+    fn add_assign(&mut self, rhs: Radiance) {
+        self.r += rhs.r;
+        self.g += rhs.g;
+        self.b += rhs.b;
+    }
+}
+
+impl Mul<f64> for Radiance {
+    type Output = Radiance;
+
+    fn mul(self, rhs: f64) -> Radiance {
+        Radiance {
+            r: self.r * rhs,
+            g: self.g * rhs,
+            b: self.b * rhs,
+        }
+    }
+}
+
+impl Mul<Ratio> for Radiance {
+    type Output = Radiance;
+
+    fn mul(self, rhs: Ratio) -> Radiance {
+        Radiance {
+            r: self.r * rhs.r,
+            g: self.g * rhs.g,
+            b: self.b * rhs.b,
+        }
+    }
+}
+
+impl Div<f64> for Radiance {
+    type Output = Radiance;
+
+    fn div(self, rhs: f64) -> Radiance {
+        Radiance {
+            r: self.r / rhs,
+            g: self.g / rhs,
+            b: self.b / rhs,
+        }
+    }
+}
+
 impl Light {
-    pub fn new(intensity: f64) -> Light {
+    pub fn new() -> Light {
         Light {
-            intensity,
+            radiance: Radiance::default(),
             color: Color::default(),
             position: Point::new(0.0, 0.0, 0.0),
         }

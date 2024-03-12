@@ -12,6 +12,8 @@ pub struct Properties {
     pub shininess: f64,
     pub refractive_index: f64,
     pub transparent: f64,
+    pub roughness: f64,
+    pub metallic: f64,
 }
 
 pub struct Object {
@@ -30,6 +32,8 @@ impl Default for Properties {
             shininess: 0.0,
             refractive_index: 1.0,
             transparent: 0.0,
+            roughness: 0.5,
+            metallic: 0.5,
         }
     }
 }
