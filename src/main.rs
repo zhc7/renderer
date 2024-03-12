@@ -39,8 +39,10 @@ fn main() {
     // left hind system!!!
     let mut world = worlds::chess_set();
     let render_args = RenderArgs {
+        height: 600,
+        width: 800,
         threads: 8,
-        anti_aliasing: SSAA,
+        // anti_aliasing: SSAA,
         ..RenderArgs::default()
     };
     world.render(render_args);

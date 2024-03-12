@@ -91,14 +91,14 @@ impl Camera {
             direction: direction.normalize(),
         }
     }
-    
+
     pub fn aligned(&self) -> bool {
         Vector::from(&self.position) == Vector::zero()
-            && self.direction == Vector { x: 0.0, y: 0.0, z: 1.0 } 
+            && self.direction == Vector { x: 0.0, y: 0.0, z: 1.0 }
             && self.up == Vector { x: 0.0, y: 1.0, z: 0.0 }
             && self.right == Vector {x: 1.0, y: 0.0, z: 0.0}
     }
-    
+
     pub fn project(&mut self, triangle: &Triangle, index: usize) {
         assert!(self.aligned());
         // project vertices
@@ -198,13 +198,14 @@ impl Camera {
             depth,
         }
     }
-    
+
     pub fn reset(&mut self, width: u32, height: u32, depth: Option<f64>) {
         self.picture = Picture::new(width, height);
         let depth = match depth {
             Some(d) => d,
             None => self.picture.width.min(self.picture.height) as f64,
         };
+        self.depth = depth;
         self.horizontal_half = self.picture.width as f64 / depth / 2.;
         self.vertical_half = self.picture.height as f64 / depth / 2.;
         self.buffer = Picture::new(self.picture.width, self.picture.height);
