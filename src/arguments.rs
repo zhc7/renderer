@@ -16,6 +16,7 @@ pub struct RenderArgs {
     pub anti_aliasing: AntiAliasing,
     pub ttl: u32,
     pub camera_depth: Option<f64>,
+    pub sample: u32,
 }
 
 impl Default for RenderArgs {
@@ -28,6 +29,7 @@ impl Default for RenderArgs {
             anti_aliasing: AntiAliasing::None,
             ttl: 5,
             camera_depth: None,
+            sample: 10,
         }
     }
 }

@@ -26,15 +26,15 @@ pub struct Ratio {
 }
 
 #[derive(Clone)]
-pub struct Light {
+pub struct PhongLight {
     pub intensity: f64,
     pub color: SColor,
     pub position: Point,
 }
 
-pub struct VolumeLight {
+#[derive(Clone)]
+pub struct Light {
     pub radiance: FColor,
-    pub color: SColor,
     pub position: Point,
 }
 
@@ -188,6 +188,30 @@ impl Add<FColor> for FColor {
     }
 }
 
+impl Sub<FColor> for FColor {
+    type Output = FColor;
+
+    fn sub(self, rhs: FColor) -> FColor {
+        FColor {
+            r: self.r - rhs.r,
+            g: self.g - rhs.g,
+            b: self.b - rhs.b,
+        }
+    }
+}
+
+impl Sub<FColor> for f64 {
+    type Output = FColor;
+
+    fn sub(self, rhs: FColor) -> FColor {
+        FColor {
+            r: self - rhs.r,
+            g: self - rhs.g,
+            b: self - rhs.b,
+        }
+    }
+}
+
 impl AddAssign<FColor> for FColor {
     fn add_assign(&mut self, rhs: FColor) {
         self.r += rhs.r;
@@ -220,6 +244,18 @@ impl Mul<Ratio> for FColor {
     }
 }
 
+impl Mul<FColor> for FColor {
+    type Output = FColor;
+
+    fn mul(self, rhs: FColor) -> FColor {
+        FColor {
+            r: self.r * rhs.r,
+            g: self.g * rhs.g,
+            b: self.b * rhs.b,
+        }
+    }
+}
+
 impl Div<f64> for FColor {
     type Output = FColor;
 
@@ -232,6 +268,54 @@ impl Div<f64> for FColor {
     }
 }
 
+impl Div<FColor> for FColor {
+    type Output = FColor;
+    
+    fn div(self, rhs: FColor) -> FColor {
+        FColor {
+            r: self.r / rhs.r,
+            g: self.g / rhs.g,
+            b: self.b / rhs.b,
+        }
+    }
+}
+
+impl From<f64> for FColor {
+    fn from(f: f64) -> FColor {
+        FColor {
+            r: f,
+            g: f,
+            b: f,
+        }
+    }
+}
+
+impl FColor {
+    pub fn powi(&self, n: i32) -> FColor {
+        FColor {
+            r: self.r.powi(n),
+            g: self.g.powi(n),
+            b: self.b.powi(n),
+        }
+    }
+    
+    pub fn sqrt(&self) -> FColor {
+        FColor {
+            r: self.r.sqrt(),
+            g: self.g.sqrt(),
+            b: self.b.sqrt(),
+        }
+    }
+    
+    pub fn min(&self, rhs: f64) -> FColor {
+        FColor {
+            r: self.r.min(rhs),
+            g: self.g.min(rhs),
+            b: self.b.min(rhs),
+        }
+    }
+}
+
 impl FColor {
     pub fn zero() -> FColor {
         FColor {
@@ -240,22 +324,29 @@ impl FColor {
             b: 0.0,
         }
     }
+    
+    pub fn one() -> FColor {
+        FColor {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+        }
+    }
 }
 
 
-impl VolumeLight {
-    pub fn new() -> VolumeLight {
-        VolumeLight {
+impl Light {
+    pub fn new() -> Light {
+        Light {
             radiance: FColor::default(),
-            color: SColor::default(),
             position: Point::new(0.0, 0.0, 0.0),
         }
     }
 }
 
-impl Light {
-    pub fn new() -> Light {
-        Light {
+impl PhongLight {
+    pub fn new() -> PhongLight {
+        PhongLight {
             intensity: 10000.0,
             color: SColor::default(),
             position: Point::new(0.0, 0.0, 0.0),

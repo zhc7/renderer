@@ -41,7 +41,7 @@ fn main() {
     let render_args = RenderArgs {
         height: 600,
         width: 800,
-        threads: 8,
+        threads: 2,
         // anti_aliasing: SSAA,
         ..RenderArgs::default()
     };

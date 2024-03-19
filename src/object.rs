@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::geometric::{Point, Triangle};
-use crate::light::SColor;
+use crate::light::{FColor, SColor};
 
 #[derive(Clone)]
 pub struct Properties {
@@ -10,10 +10,11 @@ pub struct Properties {
     pub diffuse: f64,
     pub specular: f64,
     pub shininess: f64,
-    pub refractive_index: f64,
+    pub refractive_index: FColor,
     pub transparent: f64,
     pub roughness: f64,
     pub metallic: f64,
+    pub radiance: FColor,
 }
 
 #[derive(Clone)]
@@ -31,10 +32,11 @@ impl Default for Properties {
             diffuse: 0.0,
             specular: 0.0,
             shininess: 0.0,
-            refractive_index: 1.0,
+            refractive_index: FColor::one(),
             transparent: 0.0,
             roughness: 0.5,
             metallic: 0.5,
+            radiance: FColor::zero(),
         }
     }
 }
